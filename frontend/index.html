@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Zy+Fit - Gestão de Treinos</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- FontAwesome for Premium Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Custom Style System -->
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <!-- Premium Ambient Glow Effects -->
+    <div class="ambient-glow glow-1"></div>
+    <div class="ambient-glow glow-2"></div>
+
+    <!-- Notification Toast -->
+    <div id="toast" class="toast hidden"></div>
+
+    <!-- ========================================== -->
+    <!-- 1. TELA DE LOGIN                           -->
+    <!-- ========================================== -->
+    <section id="login-screen" class="view active">
+        <div class="login-container glass-card">
+            <div class="brand">
+                <div class="brand-icon">
+                    <i class="fa-solid fa-dumbbell"></i>
+                </div>
+                <h1>ZY+<span>FIT</span></h1>
+                <p>Sua plataforma premium de evolução física</p>
+            </div>
+            
+            <form id="login-form">
+                <div class="input-group">
+                    <label for="login-email">E-mail</label>
+                    <div class="input-wrapper">
+                        <i class="fa-regular fa-envelope input-icon"></i>
+                        <input type="email" id="login-email" placeholder="seuemail@exemplo.com" required autocomplete="username">
+                    </div>
+                </div>
+                
+                <div class="input-group">
+                    <label for="login-password">Senha</label>
+                    <div class="input-wrapper">
+                        <i class="fa-solid fa-lock input-icon"></i>
+                        <input type="password" id="login-password" placeholder="••••••••" required autocomplete="current-password">
+                        <button type="button" id="toggle-password" class="password-toggle">
+                            <i class="fa-regular fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <button type="submit" class="btn-primary btn-block" id="btn-login">
+                    <span class="btn-text">Entrar</span>
+                    <span class="spinner hidden"><i class="fa-solid fa-circle-notch fa-spin"></i></span>
+                </button>
+            </form>
+            
+            <div class="login-footer">
+                <p><i class="fa-solid fa-shield-halved"></i> Conexão SSL Segura e Criptografada</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- 2. PAINEL DO PROFESSOR (ADMIN)             -->
+    <!-- ========================================== -->
+    <section id="teacher-dashboard" class="view hidden">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="header-logo">
+                <i class="fa-solid fa-dumbbell"></i>
+                <h2>ZY+<span>FIT</span></h2>
+                <span class="badge">PROFESSORA</span>
+            </div>
+            <div class="header-actions">
+                <span id="teacher-name" class="user-greeting">Olá, Professora</span>
+                <button id="btn-logout" class="btn-icon-danger" title="Sair do Sistema">
+                    <i class="fa-solid fa-power-off"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- Dashboard Content -->
+        <main class="dashboard-main">
+            <!-- Sidebar / Listagem de Alunos -->
+            <div class="sidebar-layout">
+                <div class="students-section glass-card">
+                    <div class="section-header">
+                        <h3><i class="fa-solid fa-users-gear"></i> Seus Alunos</h3>
+                        <button id="btn-add-student-modal" class="btn-action-primary">
+                            <i class="fa-solid fa-user-plus"></i> Novo Aluno
+                        </button>
+                    </div>
+                    
+                    <div class="search-box">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <input type="text" id="student-search" placeholder="Buscar aluno por nome ou e-mail...">
+                    </div>
+                    
+                    <div id="students-list" class="students-list">
+                        <!-- Dynamic Student Cards -->
+                        <div class="loading-state">
+                            <i class="fa-solid fa-circle-notch fa-spin"></i>
+                            <p>Carregando alunos...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Painel de Detalhes do Aluno Selecionado -->
+                <div class="details-section">
+                    <div id="no-student-selected" class="empty-state glass-card">
+                        <i class="fa-solid fa-user-check"></i>
+                        <h4>Nenhum aluno selecionado</h4>
+                        <p>Escolha um aluno na lista ao lado para gerenciar suas fichas de treinos, visualizar dados antropométricos e adicionar exercícios.</p>
+                    </div>
+
+                    <div id="student-profile-view" class="student-profile-container hidden">
+                        <!-- Profile Card -->
+                        <div class="student-profile-header glass-card">
+                            <div class="profile-main-info">
+                                <div class="avatar-large"><i class="fa-solid fa-user"></i></div>
+                                <div>
+                                    <h2 id="view-student-name">Nome do Aluno</h2>
+                                    <p id="view-student-email">aluno@email.com</p>
+                                </div>
+                            </div>
+                            
+                            <div class="profile-stats">
+                                <div class="stat-box">
+                                    <span class="stat-label">Peso</span>
+                                    <span class="stat-value" id="view-student-weight">-- kg</span>
+                                </div>
+                                <div class="stat-box">
+                                    <span class="stat-label">Altura</span>
+                                    <span class="stat-value" id="view-student-height">-- m</span>
+                                </div>
+                                <div class="stat-box">
+                                    <span class="stat-label">IMC</span>
+                                    <span class="stat-value" id="view-student-imc">--</span>
+                                </div>
+                            </div>
+                            
+                            <div class="profile-goals">
+                                <strong>Objetivos:</strong>
+                                <p id="view-student-goals">Nenhum objetivo cadastrado.</p>
+                            </div>
+                            
+                            <div class="profile-actions">
+                                <button id="btn-edit-student" class="btn-secondary">
+                                    <i class="fa-regular fa-pen-to-square"></i> Editar Perfil
+                                </button>
+                                <button id="btn-delete-student" class="btn-danger-outline">
+                                    <i class="fa-regular fa-trash-can"></i> Excluir Aluno
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Fichas de Treino Section -->
+                        <div class="workouts-container">
+                            <div class="workouts-header">
+                                <h3><i class="fa-solid fa-file-medical"></i> Fichas de Treino</h3>
+                                <button id="btn-add-workout-modal" class="btn-primary">
+                                    <i class="fa-solid fa-plus"></i> Nova Ficha
+                                </button>
+                            </div>
+                            
+                            <div id="workouts-list" class="workouts-list">
+                                <!-- Dynamic Workout Cards containing exercises -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- 3. PORTAL DO ALUNO                         -->
+    <!-- ========================================== -->
+    <section id="student-portal" class="view hidden">
+        <!-- Student Header -->
+        <header class="app-header">
+            <div class="header-logo">
+                <i class="fa-solid fa-dumbbell"></i>
+                <h2>ZY+<span>FIT</span></h2>
+                <span class="badge badge-student">ALUNO</span>
+            </div>
+            <div class="header-actions">
+                <span id="student-name-header" class="user-greeting">Olá, Aluno</span>
+                <button id="btn-student-logout" class="btn-icon-danger" title="Sair do Sistema">
+                    <i class="fa-solid fa-power-off"></i>
+                </button>
+            </div>
+        </header>
+        <main class="dashboard-main student-main">
+            <!-- Student content will be completely coded in Step 4 -->
+            <div class="loading-state">
+                <i class="fa-solid fa-circle-notch fa-spin"></i>
+                <p>Preparando seu portal de treinos...</p>
+            </div>
+        </main>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- 4. MODAIS E FORMULÁRIOS DINÂMICOS          -->
+    <!-- ========================================== -->
+
+    <!-- Modal: Criar / Editar Aluno -->
+    <div id="modal-student" class="modal hidden">
+        <div class="modal-content glass-card">
+            <div class="modal-header">
+                <h3 id="modal-student-title">Cadastrar Novo Aluno</h3>
+                <button class="btn-close-modal"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="form-student">
+                <input type="hidden" id="student-form-id">
+                
+                <div class="input-group">
+                    <label for="student-name">Nome Completo</label>
+                    <input type="text" id="student-name" required placeholder="Ex: João da Silva">
+                </div>
+                
+                <div class="input-group">
+                    <label for="student-email">E-mail</label>
+                    <input type="email" id="student-email" required placeholder="joao@email.com">
+                </div>
+                
+                <div class="input-group" id="student-password-container">
+                    <label for="student-password">Senha de Acesso</label>
+                    <input type="password" id="student-password" placeholder="Defina uma senha provisória">
+                </div>
+                
+                <div class="input-row">
+                    <div class="input-group">
+                        <label for="student-weight">Peso (kg)</label>
+                        <input type="number" id="student-weight" step="0.1" placeholder="Ex: 75.5">
+                    </div>
+                    <div class="input-group">
+                        <label for="student-height">Altura (m)</label>
+                        <input type="number" id="student-height" step="0.01" placeholder="Ex: 1.78">
+                    </div>
+                </div>
+                
+                <div class="input-group">
+                    <label for="student-goals">Objetivos do Aluno</label>
+                    <textarea id="student-goals" rows="3" placeholder="Foco em ganho de massa, reabilitação lombar, etc..."></textarea>
+                </div>
+                
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary btn-close-modal">Cancelar</button>
+                    <button type="submit" class="btn-primary">Salvar Aluno</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Criar / Editar Ficha de Treino -->
+    <div id="modal-workout" class="modal hidden">
+        <div class="modal-content glass-card">
+            <div class="modal-header">
+                <h3 id="modal-workout-title">Criar Ficha de Treino</h3>
+                <button class="btn-close-modal"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="form-workout">
+                <input type="hidden" id="workout-form-id">
+                
+                <div class="input-group">
+                    <label for="workout-title">Nome da Ficha</label>
+                    <input type="text" id="workout-title" required placeholder="Ex: Treino A - Membros Superiores">
+                </div>
+                
+                <div class="input-group">
+                    <label for="workout-description">Recomendações e Descrição</label>
+                    <textarea id="workout-description" rows="3" placeholder="Ex: Realizar com cadência de 3 segundos na fase excêntrica. Descansar bem."></textarea>
+                </div>
+                
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary btn-close-modal">Cancelar</button>
+                    <button type="submit" class="btn-primary">Salvar Ficha</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Criar / Editar Exercício -->
+    <div id="modal-exercise" class="modal hidden">
+        <div class="modal-content glass-card">
+            <div class="modal-header">
+                <h3 id="modal-exercise-title">Adicionar Exercício</h3>
+                <button class="btn-close-modal"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="form-exercise">
+                <input type="hidden" id="exercise-form-id">
+                <input type="hidden" id="exercise-workout-id">
+                
+                <div class="input-group">
+                    <label for="exercise-name">Nome do Exercício</label>
+                    <input type="text" id="exercise-name" required placeholder="Ex: Supino Reto com Barra">
+                </div>
+                
+                <div class="input-row">
+                    <div class="input-group">
+                        <label for="exercise-sets">Séries</label>
+                        <input type="number" id="exercise-sets" required min="1" placeholder="Ex: 4">
+                    </div>
+                    <div class="input-group">
+                        <label for="exercise-repetitions">Repetições</label>
+                        <input type="text" id="exercise-repetitions" required placeholder="Ex: 10 a 12 ou Até a Falha">
+                    </div>
+                    <div class="input-group">
+                        <label for="exercise-rest">Tempo de Descanso</label>
+                        <input type="text" id="exercise-rest" required placeholder="Ex: 60s ou 1min 30s">
+                    </div>
+                </div>
+                
+                <div class="input-group">
+                    <label for="exercise-video">URL do Vídeo Demonstrativo (YouTube/Vimeo)</label>
+                    <input type="url" id="exercise-video" placeholder="https://www.youtube.com/watch?v=...">
+                    <small class="input-help">Cole o link do YouTube ou Vimeo para exibir o player embutido para o aluno.</small>
+                </div>
+                
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary btn-close-modal">Cancelar</button>
+                    <button type="submit" class="btn-primary">Salvar Exercício</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Player de Vídeo Embutido (Aluno) -->
+    <div id="modal-video-player" class="modal hidden">
+        <div class="modal-content glass-card modal-video-content">
+            <div class="modal-header">
+                <h3 id="video-player-title">Demonstração de Exercício</h3>
+                <button class="btn-close-modal" id="btn-close-video-modal"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="video-container-wrapper">
+                <div id="video-player-frame-container"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Script Core -->
+    <script src="js/app.js"></script>
+</body>
+</html>
