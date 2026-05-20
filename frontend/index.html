@@ -39,10 +39,10 @@
             
             <form id="login-form">
                 <div class="input-group">
-                    <label for="login-email">E-mail</label>
+                    <label for="login-phone">Telefone Celular</label>
                     <div class="input-wrapper">
-                        <i class="fa-regular fa-envelope input-icon"></i>
-                        <input type="email" id="login-email" placeholder="seuemail@exemplo.com" required autocomplete="username">
+                        <i class="fa-solid fa-mobile-button input-icon"></i>
+                        <input type="text" id="login-phone" placeholder="Ex: 11999999999" required autocomplete="username">
                     </div>
                 </div>
                 
@@ -129,7 +129,7 @@
                                 <div class="avatar-large"><i class="fa-solid fa-user"></i></div>
                                 <div>
                                     <h2 id="view-student-name">Nome do Aluno</h2>
-                                    <p id="view-student-email">aluno@email.com</p>
+                                    <p id="view-student-phone" style="display: flex; align-items: center; gap: 6px;"><i class="fa-solid fa-mobile-button" style="color: var(--primary-color);"></i> --</p>
                                     <p id="view-student-pwd-container" style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px; display: flex; align-items: center; gap: 6px;"><i class="fa-solid fa-key"></i> Senha: <span id="view-student-password" style="font-weight: 600; color: var(--text-main);">------</span></p>
                                 </div>
                             </div>
@@ -230,8 +230,8 @@
                 </div>
                 
                 <div class="input-group">
-                    <label for="student-email">E-mail</label>
-                    <input type="email" id="student-email" required placeholder="joao@email.com">
+                    <label for="student-phone">Telefone Celular</label>
+                    <input type="text" id="student-phone" required placeholder="Ex: 11999999999">
                 </div>
                 
                 <div class="input-group" id="student-password-container">

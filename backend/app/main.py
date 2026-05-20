@@ -27,6 +27,12 @@ with engine.connect() as conn:
     except Exception:
         pass
 
+    try:
+        conn.execute(text("ALTER TABLE users RENAME COLUMN email TO phone;"))
+        conn.commit()
+    except Exception:
+        pass
+
 app = FastAPI(
     title=settings.PROJECT_NAME,
     description="API REST de Gestão de Treinos Físicos para Professores e Alunos",
@@ -52,7 +58,7 @@ def seed_data():
         if not admin:
             admin_user = models.User(
                 name="Professora Maria (Admin)",
-                email="prof@treinos.com",
+                phone="11999999999",
                 password_hash=auth.get_password_hash("admin123"),
                 password="admin123",
                 role="admin"
@@ -61,9 +67,13 @@ def seed_data():
             db.commit()
             print("\n" + "="*50)
             print("SEED DATABASE: Usuário Admin padrão criado com sucesso!")
-            print("E-mail: prof@treinos.com")
+            print("Celular: 11999999999")
             print("Senha: admin123")
             print("="*50 + "\n")
+        elif "@" in admin.phone:
+            # Upgrade legacy admin from email to cellphone
+            admin.phone = "11999999999"
+            db.commit()
     except Exception as e:
         print(f"Erro ao executar seeding inicial: {e}")
     finally:
@@ -79,16 +89,16 @@ def login(
     payload: schemas.UserCreate,  # Direct JSON support for easy Frontend usage
     db: Session = Depends(get_db)
 ):
-    user = db.query(models.User).filter(models.User.email == payload.email).first()
+    user = db.query(models.User).filter(models.User.phone == payload.phone).first()
     if not user or not auth.verify_password(payload.password, user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="E-mail ou senha incorretos.",
+            detail="Telefone celular ou senha incorretos.",
             headers={"WWW-Authenticate": "Bearer"},
         )
     
     access_token = auth.create_access_token(
-        data={"sub": user.email, "role": user.role}
+        data={"sub": user.phone, "role": user.role}
     )
     return {"access_token": access_token, "token_type": "bearer"}
 
@@ -98,14 +108,14 @@ def login_swagger(
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db)
 ):
-    user = db.query(models.User).filter(models.User.email == form_data.username).first()
+    user = db.query(models.User).filter(models.User.phone == form_data.username).first()
     if not user or not auth.verify_password(form_data.password, user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="E-mail ou senha incorretos.",
+            detail="Telefone celular ou senha incorretos.",
         )
     access_token = auth.create_access_token(
-        data={"sub": user.email, "role": user.role}
+        data={"sub": user.phone, "role": user.role}
     )
     return {"access_token": access_token, "token_type": "bearer"}
 
@@ -129,7 +139,7 @@ def list_students(
     if q:
         query = query.filter(
             (models.User.name.ilike(f"%{q}%")) | 
-            (models.User.email.ilike(f"%{q}%"))
+            (models.User.phone.ilike(f"%{q}%"))
         )
     return query.all()
 
@@ -140,18 +150,18 @@ def create_student(
     db: Session = Depends(get_db),
     admin: models.User = Depends(auth.get_admin_user)
 ):
-    # Verify email uniqueness
-    existing_user = db.query(models.User).filter(models.User.email == student_in.email).first()
+    # Verify phone uniqueness
+    existing_user = db.query(models.User).filter(models.User.phone == student_in.phone).first()
     if existing_user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Este endereço de e-mail já está sendo utilizado."
+            detail="Este número de celular já está sendo utilizado."
         )
     
     hashed_password = auth.get_password_hash(student_in.password)
     student = models.User(
         name=student_in.name,
-        email=student_in.email,
+        phone=student_in.phone,
         password_hash=hashed_password,
         password=student_in.password,
         role="student",

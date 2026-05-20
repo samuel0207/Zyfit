@@ -8,14 +8,14 @@ class Token(BaseModel):
     token_type: str
 
 class TokenData(BaseModel):
-    email: Optional[str] = None
+    phone: Optional[str] = None
     role: Optional[str] = None
 
 
 # ----------------- USER SCHEMAS -----------------
 class UserBase(BaseModel):
     name: str
-    email: EmailStr
+    phone: str
     role: str = "student"
     weight: Optional[float] = None
     height: Optional[float] = None
@@ -26,7 +26,7 @@ class UserCreate(UserBase):
 
 class UserUpdate(BaseModel):
     name: Optional[str] = None
-    email: Optional[EmailStr] = None
+    phone: Optional[str] = None
     weight: Optional[float] = None
     height: Optional[float] = None
     goals: Optional[str] = None

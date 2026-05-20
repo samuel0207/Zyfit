@@ -147,7 +147,7 @@ async function fetchCurrentUser() {
     }
 }
 
-async function handleLogin(email, password) {
+async function handleLogin(phone, password) {
     const btn = document.getElementById('btn-login');
     const text = btn.querySelector('.btn-text');
     const spinner = btn.querySelector('.spinner');
@@ -160,7 +160,7 @@ async function handleLogin(email, password) {
     try {
         const data = await apiRequest('/api/auth/login', {
             method: 'POST',
-            body: JSON.stringify({ email, password, name: 'dummy' }) // name is requested by schema but ignored on login
+            body: JSON.stringify({ phone, password, name: 'dummy' }) // name is requested by schema but ignored on login
         });
         
         state.token = data.access_token;
@@ -239,7 +239,7 @@ function renderStudentsList(studentsList) {
             </div>
             <div class="student-card-info">
                 <h4>${student.name}</h4>
-                <p>${student.email}</p>
+                <p>${student.phone}</p>
             </div>
             <div class="student-card-arrow">
                 <i class="fa-solid fa-chevron-right"></i>
@@ -269,7 +269,7 @@ async function selectStudent(studentId) {
     
     // Fill basic details
     document.getElementById('view-student-name').innerText = student.name;
-    document.getElementById('view-student-email').innerText = student.email;
+    document.getElementById('view-student-phone').innerHTML = `<i class="fa-solid fa-mobile-button" style="color: var(--primary-color);"></i> ${student.phone}`;
     document.getElementById('view-student-password').innerText = student.password || '------';
     document.getElementById('view-student-weight').innerText = student.weight ? `${student.weight} kg` : '--';
     document.getElementById('view-student-height').innerText = student.height ? `${student.height} m` : '--';
@@ -297,13 +297,13 @@ async function handleStudentSubmit(event) {
     event.preventDefault();
     const id = document.getElementById('student-form-id').value;
     const name = document.getElementById('student-name').value;
-    const email = document.getElementById('student-email').value;
+    const phone = document.getElementById('student-phone').value;
     const password = document.getElementById('student-password').value;
     const weight = parseFloat(document.getElementById('student-weight').value) || null;
     const height = parseFloat(document.getElementById('student-height').value) || null;
     const goals = document.getElementById('student-goals').value || null;
     
-    const payload = { name, email, weight, height, goals };
+    const payload = { name, phone, weight, height, goals };
     
     try {
         if (id) {
@@ -623,7 +623,7 @@ document.getElementById('btn-edit-student').addEventListener('click', () => {
     document.getElementById('modal-student-title').innerText = 'Editar Perfil do Aluno';
     document.getElementById('student-form-id').value = student.id;
     document.getElementById('student-name').value = student.name;
-    document.getElementById('student-email').value = student.email;
+    document.getElementById('student-phone').value = student.phone;
     document.getElementById('student-password-container').style.display = 'block';
     document.getElementById('student-password').required = false; // password is optional when editing
     document.getElementById('student-password').placeholder = 'Deixe em branco para manter a senha atual';
@@ -727,9 +727,9 @@ function setupEventListeners() {
     if (loginForm) {
         loginForm.addEventListener('submit', (e) => {
             e.preventDefault();
-            const email = document.getElementById('login-email').value;
+            const phone = document.getElementById('login-phone').value;
             const password = document.getElementById('login-password').value;
-            handleLogin(email, password);
+            handleLogin(phone, password);
         });
     }
 
@@ -759,7 +759,7 @@ function setupEventListeners() {
             const q = e.target.value.toLowerCase().trim();
             const filtered = state.students.filter(student => 
                 student.name.toLowerCase().includes(q) || 
-                student.email.toLowerCase().includes(q)
+                student.phone.toLowerCase().includes(q)
             );
             renderStudentsList(filtered);
         });
