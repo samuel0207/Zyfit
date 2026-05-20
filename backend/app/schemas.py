@@ -34,6 +34,7 @@ class UserUpdate(BaseModel):
 
 class UserResponse(UserBase):
     id: str
+    password: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 

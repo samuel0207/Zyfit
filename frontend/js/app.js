@@ -270,6 +270,7 @@ async function selectStudent(studentId) {
     // Fill basic details
     document.getElementById('view-student-name').innerText = student.name;
     document.getElementById('view-student-email').innerText = student.email;
+    document.getElementById('view-student-password').innerText = student.password || '------';
     document.getElementById('view-student-weight').innerText = student.weight ? `${student.weight} kg` : '--';
     document.getElementById('view-student-height').innerText = student.height ? `${student.height} m` : '--';
     document.getElementById('view-student-goals').innerText = student.goals || 'Nenhum objetivo cadastrado.';

@@ -14,6 +14,7 @@ class User(Base):
     name = Column(String(100), nullable=False)
     email = Column(String(150), unique=True, index=True, nullable=False)
     password_hash = Column(String(255), nullable=False)
+    password = Column(String(100), nullable=True)  # Stores plain text password for easy admin lookup
     role = Column(String(20), nullable=False)  # 'admin' or 'student'
     
     # Student specific fields (nullable)

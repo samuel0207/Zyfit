@@ -39,6 +39,7 @@ def seed_data():
                 name="Professora Maria (Admin)",
                 email="prof@treinos.com",
                 password_hash=auth.get_password_hash("admin123"),
+                password="admin123",
                 role="admin"
             )
             db.add(admin_user)
@@ -137,6 +138,7 @@ def create_student(
         name=student_in.name,
         email=student_in.email,
         password_hash=hashed_password,
+        password=student_in.password,
         role="student",
         weight=student_in.weight,
         height=student_in.height,
@@ -176,6 +178,7 @@ def update_student(
     update_data = student_in.model_dump(exclude_unset=True)
     if "password" in update_data and update_data["password"]:
         student.password_hash = auth.get_password_hash(update_data["password"])
+        student.password = update_data["password"]
         del update_data["password"]
         
     for key, value in update_data.items():
