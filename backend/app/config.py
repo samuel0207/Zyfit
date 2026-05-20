@@ -7,6 +7,8 @@ class Settings:
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440  # 24 hours
     
     # Use SQLite by default for easy development, configurable to PostgreSQL via env var
-    DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./treinos.db")
+    # On Vercel, fall back to /tmp/ to avoid read-only filesystem crash
+    default_db = "sqlite:////tmp/treinos.db" if os.getenv("VERCEL") else "sqlite:///./treinos.db"
+    DATABASE_URL: str = os.getenv("DATABASE_URL", default_db)
 
 settings = Settings()
