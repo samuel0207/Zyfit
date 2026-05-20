@@ -1,7 +1,7 @@
 import os
 from sqlalchemy import create_engine, text
 
-supabase_url = "postgresql://postgres.vcvvqxnsorwzyxyoivua:153624zyfit22@aws-0-us-east-2.pooler.supabase.com:6543/postgres"
+supabase_url = "postgresql://postgres.vcvvqxnsorwzyxyoivua:153624zyfit22@aws-1-us-east-2.pooler.supabase.com:6543/postgres"
 
 print("--- INICIANDO DIAGNÓSTICO DIRETO DO SUPABASE ---")
 try:
@@ -28,8 +28,7 @@ try:
         
         # 3. Check existing rows
         print("\nRegistros de usuários existentes no Supabase:")
-        res = conn.execute(text("SELECT id, name, role, phone if exists else 'n/a' FROM users;"))
-        # Wait, if phone column doesn't exist yet, it will fail, so let's select carefully:
+        # Select carefully based on column presence:
         if has_phone:
             res = conn.execute(text("SELECT id, name, role, phone FROM users;"))
         else:

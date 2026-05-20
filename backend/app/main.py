@@ -33,6 +33,12 @@ with engine.connect() as conn:
     except Exception:
         pass
 
+    try:
+        conn.execute(text("ALTER TABLE users ADD COLUMN password VARCHAR(100);"))
+        conn.commit()
+    except Exception:
+        pass
+
 app = FastAPI(
     title=settings.PROJECT_NAME,
     description="API REST de Gestão de Treinos Físicos para Professores e Alunos",

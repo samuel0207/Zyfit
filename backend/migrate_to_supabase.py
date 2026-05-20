@@ -71,14 +71,15 @@ def main():
         # Check if user already exists
         exists = supabase_session.query(User).filter(User.id == u.id).first()
         if exists:
-            print(f"   [Ignorado] Usuário {u.email} já existe no Supabase.")
+            print(f"   [Ignorado] Usuário {u.phone} já existe no Supabase.")
             continue
             
         new_user = User(
             id=u.id,
             name=u.name,
-            email=u.email,
+            phone=u.phone,
             password_hash=u.password_hash,
+            password=u.password,
             role=u.role,
             weight=u.weight,
             height=u.height,

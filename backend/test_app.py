@@ -22,7 +22,7 @@ def run_tests():
     # 1. Test Seeding & Database Tables
     print("\n[TEST 1] Verificando tabelas e Seeding do Administrador...")
     db = next(get_db())
-    admin_user = db.query(models.User).filter(models.User.email == "prof@treinos.com").first()
+    admin_user = db.query(models.User).filter(models.User.phone == "153624zyfit22").first()
     assert admin_user is not None, "Erro: Admin padrão não foi seeded."
     assert admin_user.role == "admin", "Erro: O papel do Admin seeded não é 'admin'."
     print("👉 OK! Tabelas criadas com sucesso e Administrador seeded no banco de dados.")
@@ -31,8 +31,8 @@ def run_tests():
     print("\n[TEST 2] Testando endpoint de Login REST /api/auth/login...")
     login_payload = {
         "name": "Professora Maria (Admin)", # ignored during login but matched schema
-        "email": "prof@treinos.com",
-        "password": "admin123"
+        "phone": "153624zyfit22",
+        "password": "153624zyfit22"
     }
     response = client.post("/api/auth/login", json=login_payload)
     assert response.status_code == 200, f"Erro no login: {response.text}"
@@ -48,14 +48,14 @@ def run_tests():
     response = client.get("/api/auth/me", headers=headers)
     assert response.status_code == 200, f"Erro ao acessar /api/auth/me: {response.text}"
     me_data = response.json()
-    assert me_data["email"] == "prof@treinos.com", "Erro: Usuário incorreto retornado."
+    assert me_data["phone"] == "153624zyfit22", "Erro: Usuário incorreto retornado."
     print(f"👉 OK! Rota /api/auth/me funcionando. Identificado como: {me_data['name']} ({me_data['role']})")
 
     # 4. Test Student Creation (CRUD - Admin Only)
     print("\n[TEST 4] Testando criação de Aluno (CRUD - Admin Only)...")
     student_payload = {
         "name": "Pedro Aluno Teste",
-        "email": "pedro@treinos.com",
+        "phone": "11988888888",
         "password": "alunopassword123",
         "role": "student",
         "weight": 82.3,
@@ -103,7 +103,7 @@ def run_tests():
     # Login as student
     student_login = {
         "name": "Pedro Aluno Teste",
-        "email": "pedro@treinos.com",
+        "phone": "11988888888",
         "password": "alunopassword123"
     }
     response = client.post("/api/auth/login", json=student_login)

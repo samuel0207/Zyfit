@@ -1,4 +1,13 @@
 import os
+from dotenv import load_dotenv
+
+# Load local .env file from the backend directory if present
+backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+env_path = os.path.join(backend_dir, ".env")
+if os.path.exists(env_path):
+    load_dotenv(env_path)
+else:
+    load_dotenv()
 
 class Settings:
     PROJECT_NAME: str = "Workout Management API"
