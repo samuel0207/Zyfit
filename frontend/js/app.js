@@ -431,12 +431,19 @@ function renderWorkoutsList(workoutsList) {
             `).join('')
             : `<p class="empty-state" style="padding: 15px;">Nenhum exercício cadastrado nesta ficha.</p>`;
             
+        const daysHtml = workout.days_of_week 
+            ? `<div class="workout-days-badge" style="margin-top: 6px; font-size: 0.75rem; color: var(--primary-color); display: flex; align-items: center; gap: 4px; font-weight: 500;">
+                 <i class="fa-regular fa-calendar-days"></i> ${workout.days_of_week}
+               </div>`
+            : '';
+            
         return `
             <div class="workout-sheet-card glass-card">
                 <div class="workout-sheet-header">
                     <div>
                         <h4>${workout.title}</h4>
                         <p>${workout.description || 'Sem descrição cadastrada.'}</p>
+                        ${daysHtml}
                     </div>
                     <div class="workout-sheet-actions">
                         <button class="btn-icon-sm" onclick="openEditWorkout('${workout.id}')" title="Editar ficha de treino">
@@ -466,12 +473,16 @@ async function handleWorkoutSubmit(event) {
     const title = document.getElementById('workout-title').value;
     const description = document.getElementById('workout-description').value || null;
     
+    const checkedDays = Array.from(document.querySelectorAll('input[name="workout-days"]:checked'))
+        .map(input => input.value)
+        .join(', ');
+        
     try {
         if (id) {
             // Edit workout header
             await apiRequest(`/api/workouts/${id}`, {
                 method: 'PUT',
-                body: JSON.stringify({ title, description })
+                body: JSON.stringify({ title, description, days_of_week: checkedDays || null })
             });
             showToast('Ficha de treino atualizada com sucesso!', 'success');
         } else {
@@ -481,7 +492,8 @@ async function handleWorkoutSubmit(event) {
                 body: JSON.stringify({
                     student_id: state.selectedStudentId,
                     title,
-                    description
+                    description,
+                    days_of_week: checkedDays || null
                 })
             });
             showToast('Nova ficha de treino criada com sucesso!', 'success');
@@ -627,10 +639,28 @@ document.getElementById('btn-delete-student').addEventListener('click', () => {
     }
 });
 
+// Helper to configure days selector checkboxes visually
+function setupWorkoutDays(daysStr = '') {
+    const daysList = daysStr ? daysStr.split(',').map(d => d.trim()) : [];
+    document.querySelectorAll('input[name="workout-days"]').forEach(input => {
+        const isChecked = daysList.includes(input.value);
+        input.checked = isChecked;
+        const parent = input.parentElement;
+        if (parent) {
+            parent.classList.toggle('selected', isChecked);
+            parent.style.background = isChecked ? 'var(--primary-color)' : 'rgba(255,255,255,0.05)';
+            parent.style.borderColor = isChecked ? 'var(--primary-color)' : 'rgba(255,255,255,0.1)';
+        }
+    });
+}
+
 // Workout Modal triggers
 document.getElementById('btn-add-workout-modal').addEventListener('click', () => {
     document.getElementById('modal-workout-title').innerText = 'Criar Ficha de Treino';
     document.getElementById('workout-form-id').value = '';
+    document.getElementById('workout-title').value = '';
+    document.getElementById('workout-description').value = '';
+    setupWorkoutDays('');
     openModal('modal-workout');
 });
 
@@ -642,6 +672,7 @@ function openEditWorkout(workoutId) {
     document.getElementById('workout-form-id').value = workout.id;
     document.getElementById('workout-title').value = workout.title;
     document.getElementById('workout-description').value = workout.description || '';
+    setupWorkoutDays(workout.days_of_week || '');
     openModal('modal-workout');
 }
 
@@ -821,10 +852,81 @@ function renderStudentPortal() {
         </div>
     `;
     
+    // 1.5. Calculate Weekly Schedule Timeline
+    const daysOfWeekList = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"];
+    const daysShort = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
+    
+    // Get current day of the week in Portuguese
+    const dateOptions = { weekday: 'long' };
+    let currentDayRaw = new Intl.DateTimeFormat('pt-BR', dateOptions).format(new Date());
+    // Normalize to: capitalize first letter, remove "-feira"
+    let currentDayName = currentDayRaw.charAt(0).toUpperCase() + currentDayRaw.slice(1);
+    if (currentDayName.includes('-feira')) {
+        currentDayName = currentDayName.split('-')[0];
+    }
+    
+    // Safety check for accent characters
+    const dayMapping = {
+        'Segunda': 'Segunda', 'Terca': 'Terça', 'Terça': 'Terça',
+        'Quarta': 'Quarta', 'Quinta': 'Quinta', 'Sexta': 'Sexta',
+        'Sabado': 'Sábado', 'Sábado': 'Sábado', 'Domingo': 'Domingo'
+    };
+    const currentDayMatched = dayMapping[currentDayName] || 'Segunda';
+
+    // Build timeline items
+    const timelineHtml = `
+        <div class="weekly-timeline-container glass-card" style="margin-top: 20px; padding: 20px;">
+            <h3 style="font-size: 1rem; font-weight: 600; margin-bottom: 15px; display: flex; align-items: center; gap: 8px;">
+                <i class="fa-regular fa-calendar-check" style="color: var(--primary-color);"></i> Cronograma Semanal de Treinos
+            </h3>
+            <div class="weekly-days-grid" style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; text-align: center;">
+                ${daysOfWeekList.map((dayName, idx) => {
+                    const isToday = dayName === currentDayMatched;
+                    // Find workouts scheduled for this day
+                    const workoutsForDay = state.studentWorkouts.filter(w => 
+                        w.days_of_week && w.days_of_week.includes(dayName)
+                    );
+                    
+                    let dayTreinoTitle = 'Descanso';
+                    let dayTreinoId = null;
+                    let hasTreino = false;
+                    
+                    if (workoutsForDay.length > 0) {
+                        dayTreinoTitle = workoutsForDay[0].title;
+                        dayTreinoId = workoutsForDay[0].id;
+                        hasTreino = true;
+                    }
+                    
+                    const borderStyle = isToday 
+                        ? 'border: 2px solid var(--primary-color); background: rgba(6, 182, 212, 0.1);' 
+                        : 'border: 1px solid rgba(255,255,255,0.05); background: rgba(255,255,255,0.01);';
+                        
+                    const textClass = isToday ? 'color: var(--primary-color); font-weight: 700;' : 'color: var(--text-secondary);';
+                    const activePill = isToday ? `<span style="font-size: 0.65rem; background: var(--primary-color); color: #fff; padding: 2px 6px; border-radius: 10px; font-weight: 600; display: inline-block; margin-top: 4px;">HOJE</span>` : '';
+                    
+                    const clickHandler = dayTreinoId 
+                        ? `onclick="switchStudentWorkoutTab('${dayTreinoId}')" style="cursor: pointer; ${borderStyle} border-radius: 12px; padding: 12px 6px; transition: all 0.2s ease;"`
+                        : `style="${borderStyle} border-radius: 12px; padding: 12px 6px;"`;
+
+                    return `
+                        <div class="timeline-day-pill" ${clickHandler}>
+                            <span style="font-size: 0.8rem; text-transform: uppercase; font-weight: 600; ${textClass}">${daysShort[idx]}</span>
+                            <div style="font-size: 0.75rem; font-weight: 500; margin-top: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: ${hasTreino ? '#fff' : 'rgba(255,255,255,0.3)'};">
+                                ${hasTreino ? `<i class="fa-solid fa-dumbbell" style="font-size: 0.7rem; color: var(--primary-color); margin-right: 2px;"></i>` : '<i class="fa-solid fa-bed" style="font-size: 0.7rem; margin-right: 2px;"></i>'} 
+                                ${dayTreinoTitle}
+                            </div>
+                            ${activePill}
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+        </div>
+    `;
+
     // Tabs selector HTML
     const tabsHtml = state.studentWorkouts.length > 0
         ? `
-            <div class="tabs-container">
+            <div class="tabs-container" style="margin-top: 20px;">
                 ${state.studentWorkouts.map(w => `
                     <button class="tab-button ${w.id === state.activeStudentWorkoutId ? 'active' : ''}" 
                             onclick="switchStudentWorkoutTab('${w.id}')">
@@ -887,7 +989,7 @@ function renderStudentPortal() {
         `;
     }
     
-    studentMain.innerHTML = welcomeHtml + tabsHtml + exercisesHtml;
+    studentMain.innerHTML = welcomeHtml + timelineHtml + tabsHtml + exercisesHtml;
 }
 
 function switchStudentWorkoutTab(workoutId) {
@@ -922,8 +1024,21 @@ async function toggleExerciseCompletion(exerciseId, isCompletedToday) {
 function playDemonstrationVideo(exerciseName, videoUrl) {
     const container = document.getElementById('video-player-frame-container');
     const title = document.getElementById('video-player-title');
+    const modalContent = document.querySelector('.modal-video-content');
+    const wrapper = document.querySelector('.video-container-wrapper');
     
     title.innerText = `Execução: ${exerciseName}`;
+    
+    const isShorts = videoUrl.includes('/shorts/') || videoUrl.includes('youtube.com/shorts');
+    
+    // Adapt aspect ratio and size for vertical YouTube Shorts
+    if (isShorts) {
+        if (modalContent) modalContent.style.maxWidth = '380px';
+        if (wrapper) wrapper.style.paddingBottom = '177.78%'; // 9:16 aspect ratio
+    } else {
+        if (modalContent) modalContent.style.maxWidth = '800px';
+        if (wrapper) wrapper.style.paddingBottom = '56.25%'; // 16:9 aspect ratio
+    }
     
     // Check if YouTube
     const ytUrl = parseYouTubeUrl(videoUrl);
@@ -971,6 +1086,13 @@ function playDemonstrationVideo(exerciseName, videoUrl) {
 }
 
 function parseYouTubeUrl(url) {
+    // Check for YouTube Shorts first
+    const shortsRegExp = /youtube\.com\/shorts\/([^#\&\?]*)/;
+    const shortsMatch = url.match(shortsRegExp);
+    if (shortsMatch && shortsMatch[1]) {
+        return `https://www.youtube.com/embed/${shortsMatch[1]}?autoplay=1&rel=0`;
+    }
+
     const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
     const match = url.match(regExp);
     if (match && match[2].length === 11) {

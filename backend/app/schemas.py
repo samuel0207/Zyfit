@@ -77,6 +77,7 @@ class ExerciseResponse(ExerciseBase):
 class WorkoutBase(BaseModel):
     title: str
     description: Optional[str] = None
+    days_of_week: Optional[str] = None
 
 class WorkoutCreate(WorkoutBase):
     student_id: str

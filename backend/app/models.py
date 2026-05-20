@@ -37,6 +37,7 @@ class Workout(Base):
     student_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     title = Column(String(100), nullable=False)
     description = Column(String(255), nullable=True)
+    days_of_week = Column(String(150), nullable=True)  # Comma-separated days like "Segunda, Quarta"
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

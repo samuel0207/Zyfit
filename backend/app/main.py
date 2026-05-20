@@ -18,6 +18,15 @@ from app import models, schemas, auth
 # Auto-create tables on startup
 Base.metadata.create_all(bind=engine)
 
+# Auto-migrate: Add days_of_week column to workouts if it doesn't exist
+from sqlalchemy import text
+with engine.connect() as conn:
+    try:
+        conn.execute(text("ALTER TABLE workouts ADD COLUMN days_of_week VARCHAR(150);"))
+        conn.commit()
+    except Exception:
+        pass
+
 app = FastAPI(
     title=settings.PROJECT_NAME,
     description="API REST de Gestão de Treinos Físicos para Professores e Alunos",
@@ -228,7 +237,8 @@ def create_workout(
     workout = models.Workout(
         student_id=workout_in.student_id,
         title=workout_in.title,
-        description=workout_in.description
+        description=workout_in.description,
+        days_of_week=workout_in.days_of_week
     )
     db.add(workout)
     db.commit()
