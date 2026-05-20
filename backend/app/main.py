@@ -470,6 +470,7 @@ def get_my_workouts_portal(
                 student_id=w.student_id,
                 title=w.title,
                 description=w.description,
+                days_of_week=w.days_of_week,
                 created_at=w.created_at,
                 updated_at=w.updated_at,
                 exercises=exercises_portal
