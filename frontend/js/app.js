@@ -939,20 +939,6 @@ function renderStudentPortal() {
         </div>
     `;
 
-    // Tabs selector HTML
-    const tabsHtml = state.studentWorkouts.length > 0
-        ? `
-            <div class="tabs-container" style="margin-top: 20px;">
-                ${state.studentWorkouts.map(w => `
-                    <button class="tab-button ${w.id === state.activeStudentWorkoutId ? 'active' : ''}" 
-                            onclick="switchStudentWorkoutTab('${w.id}')">
-                        <i class="fa-solid fa-clipboard-list"></i> ${w.title}
-                    </button>
-                `).join('')}
-            </div>
-        `
-        : '';
-        
     // Exercises HTML
     let exercisesHtml = '';
     if (!activeWorkout) {
@@ -1018,7 +1004,7 @@ function renderStudentPortal() {
         `;
     }
     
-    studentMain.innerHTML = welcomeHtml + timelineHtml + tabsHtml + exercisesHtml;
+    studentMain.innerHTML = welcomeHtml + timelineHtml + exercisesHtml;
 }
 
 function selectTimelineDay(dayName) {
@@ -1033,21 +1019,6 @@ function selectTimelineDay(dayName) {
         state.activeStudentWorkoutId = workoutsForDay[0].id;
     } else {
         state.activeStudentWorkoutId = null; // rest day!
-    }
-    
-    renderStudentPortal();
-}
-
-function switchStudentWorkoutTab(workoutId) {
-    state.activeStudentWorkoutId = workoutId;
-    
-    // Sync the selected day with the first day this workout is scheduled for
-    const workout = state.studentWorkouts.find(w => w.id === workoutId);
-    if (workout && workout.days_of_week) {
-        const days = workout.days_of_week.split(',').map(d => d.trim());
-        if (days.length > 0) {
-            state.selectedTimelineDay = days[0];
-        }
     }
     
     renderStudentPortal();
