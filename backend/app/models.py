@@ -51,7 +51,7 @@ class Exercise(Base):
 
     id = Column(String(36), primary_key=True, default=generate_uuid)
     workout_id = Column(String(36), ForeignKey("workouts.id", ondelete="CASCADE"), nullable=False, index=True)
-    name = Column(String(100), nullable=False)
+    name = Column(String(500), nullable=False)
     sets = Column(Integer, nullable=False)
     repetitions = Column(String(50), nullable=False)
     rest_time = Column(String(30), nullable=False, default="60s")

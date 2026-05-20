@@ -50,6 +50,12 @@ def safe_migrate():
             if 'password' not in existing_user_cols:
                 with engine.begin() as conn:
                     conn.execute(text("ALTER TABLE users ADD COLUMN password VARCHAR(100);"))
+        
+        # Widen exercises.name column from VARCHAR(100) to VARCHAR(500)
+        if inspector.has_table('exercises'):
+            with engine.begin() as conn:
+                if not settings.DATABASE_URL.startswith('sqlite'):
+                    conn.execute(text("ALTER TABLE exercises ALTER COLUMN name TYPE VARCHAR(500);"))
     except Exception as e:
         print(f"[Migration Warning] Non-critical migration error: {e}")
 
