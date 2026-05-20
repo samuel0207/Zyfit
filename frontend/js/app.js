@@ -609,6 +609,7 @@ function closeModal(modalId) {
 
 // Student Modal triggers
 document.getElementById('btn-add-student-modal').addEventListener('click', () => {
+    document.getElementById('form-student').reset();
     document.getElementById('modal-student-title').innerText = 'Cadastrar Novo Aluno';
     document.getElementById('student-form-id').value = '';
     document.getElementById('student-password-container').style.display = 'block';
@@ -897,22 +898,25 @@ function renderStudentPortal() {
                         hasTreino = true;
                     }
                     
-                    const borderStyle = isToday 
-                        ? 'border: 2px solid var(--primary-color); background: rgba(6, 182, 212, 0.1);' 
-                        : 'border: 1px solid rgba(255,255,255,0.05); background: rgba(255,255,255,0.01);';
-                        
-                    const textClass = isToday ? 'color: var(--primary-color); font-weight: 700;' : 'color: var(--text-secondary);';
-                    const activePill = isToday ? `<span style="font-size: 0.65rem; background: var(--primary-color); color: #fff; padding: 2px 6px; border-radius: 10px; font-weight: 600; display: inline-block; margin-top: 4px;">HOJE</span>` : '';
+                    const pillClasses = ['timeline-day-pill'];
+                    if (isToday) pillClasses.push('is-today');
+                    if (hasTreino) {
+                        pillClasses.push('has-workout');
+                    } else {
+                        pillClasses.push('is-rest');
+                    }
+                    
+                    const activePill = isToday ? `<span class="today-badge" style="font-size: 0.62rem; background: rgba(255,255,255,0.25); color: #fff; padding: 2px 6px; border-radius: 10px; font-weight: 600; display: inline-block; margin-top: 4px;">HOJE</span>` : '';
                     
                     const clickHandler = dayTreinoId 
-                        ? `onclick="switchStudentWorkoutTab('${dayTreinoId}')" style="cursor: pointer; ${borderStyle} border-radius: 12px; padding: 12px 6px; transition: all 0.2s ease;"`
-                        : `style="${borderStyle} border-radius: 12px; padding: 12px 6px;"`;
+                        ? `onclick="switchStudentWorkoutTab('${dayTreinoId}')" style="cursor: pointer;"`
+                        : '';
 
                     return `
-                        <div class="timeline-day-pill" ${clickHandler}>
-                            <span style="font-size: 0.8rem; text-transform: uppercase; font-weight: 600; ${textClass}">${daysShort[idx]}</span>
-                            <div style="font-size: 0.75rem; font-weight: 500; margin-top: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: ${hasTreino ? '#fff' : 'rgba(255,255,255,0.3)'};">
-                                ${hasTreino ? `<i class="fa-solid fa-dumbbell" style="font-size: 0.7rem; color: var(--primary-color); margin-right: 2px;"></i>` : '<i class="fa-solid fa-bed" style="font-size: 0.7rem; margin-right: 2px;"></i>'} 
+                        <div class="${pillClasses.join(' ')}" ${clickHandler}>
+                            <span class="day-name" style="font-size: 0.75rem; text-transform: uppercase; font-weight: 600; color: var(--text-secondary);">${daysShort[idx]}</span>
+                            <div class="day-status" style="font-size: 0.65rem; font-weight: 500; margin-top: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; display: flex; align-items: center; gap: 2px; justify-content: center; color: ${hasTreino ? '#fff' : 'rgba(255,255,255,0.3)'};">
+                                ${hasTreino ? `<i class="fa-solid fa-dumbbell" style="font-size: 0.65rem; color: var(--primary-color);"></i>` : '<i class="fa-solid fa-bed" style="font-size: 0.65rem;"></i>'} 
                                 ${dayTreinoTitle}
                             </div>
                             ${activePill}
