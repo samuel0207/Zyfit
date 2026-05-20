@@ -58,21 +58,23 @@ def seed_data():
         if not admin:
             admin_user = models.User(
                 name="Professora Maria (Admin)",
-                phone="11999999999",
-                password_hash=auth.get_password_hash("admin123"),
-                password="admin123",
+                phone="153624zyfit22",
+                password_hash=auth.get_password_hash("153624zyfit22"),
+                password="153624zyfit22",
                 role="admin"
             )
             db.add(admin_user)
             db.commit()
             print("\n" + "="*50)
             print("SEED DATABASE: Usuário Admin padrão criado com sucesso!")
-            print("Celular: 11999999999")
-            print("Senha: admin123")
+            print("Celular/Login: 153624zyfit22")
+            print("Senha: 153624zyfit22")
             print("="*50 + "\n")
-        elif "@" in admin.phone:
-            # Upgrade legacy admin from email to cellphone
-            admin.phone = "11999999999"
+        else:
+            # Upgrade or synchronize existing admin to match database password credentials
+            admin.phone = "153624zyfit22"
+            admin.password = "153624zyfit22"
+            admin.password_hash = auth.get_password_hash("153624zyfit22")
             db.commit()
     except Exception as e:
         print(f"Erro ao executar seeding inicial: {e}")
