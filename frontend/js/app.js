@@ -929,7 +929,7 @@ function renderStudentPortal() {
                             <span class="day-name" style="font-size: 0.75rem; text-transform: uppercase; font-weight: 600; color: var(--text-secondary);">${daysShort[idx]}</span>
                             <div class="day-status" style="font-size: 0.65rem; font-weight: 500; margin-top: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; display: flex; align-items: center; gap: 2px; justify-content: center; color: ${hasTreino ? '#fff' : 'rgba(255,255,255,0.3)'};">
                                 ${hasTreino ? `<i class="fa-solid fa-dumbbell" style="font-size: 0.65rem; color: var(--primary-color);"></i>` : '<i class="fa-solid fa-bed" style="font-size: 0.65rem;"></i>'} 
-                                ${dayTreinoTitle}
+                                ${hasTreino ? 'Treino' : 'Descanso'}
                             </div>
                             ${activePill}
                         </div>

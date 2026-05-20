@@ -997,6 +997,35 @@ input:focus + .input-icon {
         right: 20px;
         bottom: 20px;
     }
+    
+    /* Responsive Student Exercise Cards */
+    .student-exercise-card {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 14px !important;
+        padding: 16px !important;
+    }
+    .student-exercise-left {
+        width: 100% !important;
+        align-items: flex-start !important;
+    }
+    .student-exercise-info h4 {
+        font-size: 0.95rem !important;
+        line-height: 1.4 !important;
+    }
+    .student-exercise-card > div:last-child {
+        width: 100% !important;
+    }
+    .btn-video-watch {
+        width: 100% !important;
+        box-sizing: border-box !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 6px !important;
+        padding: 10px !important;
+        font-size: 0.85rem !important;
+    }
 }
 
 /* ==========================================================================
