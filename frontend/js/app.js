@@ -114,7 +114,18 @@ async function apiRequest(endpoint, options = {}) {
             return null;
         }
         
-        const data = await response.json();
+        // Safely parse JSON - handle cases where server returns plain text errors
+        let data;
+        const contentType = response.headers.get('content-type') || '';
+        const responseText = await response.text();
+        
+        try {
+            data = JSON.parse(responseText);
+        } catch (parseError) {
+            // Server returned non-JSON response (e.g. "Internal Server Error")
+            console.error(`Non-JSON response from ${endpoint}:`, responseText);
+            throw new Error(responseText || `Erro do servidor (${response.status})`);
+        }
         
         if (!response.ok) {
             throw new Error(data.detail || 'Erro na requisição da API');

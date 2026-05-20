@@ -4,7 +4,8 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from fastapi import FastAPI, Depends, HTTPException, status, Query
+from fastapi import FastAPI, Depends, HTTPException, status, Query, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
@@ -18,32 +19,58 @@ from app import models, schemas, auth
 # Auto-create tables on startup
 Base.metadata.create_all(bind=engine)
 
-# Auto-migrate: Add days_of_week column to workouts if it doesn't exist
-from sqlalchemy import text
-with engine.connect() as conn:
-    try:
-        conn.execute(text("ALTER TABLE workouts ADD COLUMN days_of_week VARCHAR(150);"))
-        conn.commit()
-    except Exception:
-        pass
+# Auto-migrate: Add columns safely for both SQLite and PostgreSQL
+from sqlalchemy import text, inspect as sa_inspect
 
+def safe_migrate():
+    """Run migrations that are safe for both SQLite and PostgreSQL."""
+    inspector = sa_inspect(engine)
+    
     try:
-        conn.execute(text("ALTER TABLE users RENAME COLUMN email TO phone;"))
-        conn.commit()
-    except Exception:
-        pass
+        # Check if 'workouts' table exists before migrating
+        if inspector.has_table('workouts'):
+            existing_cols = [col['name'] for col in inspector.get_columns('workouts')]
+            if 'days_of_week' not in existing_cols:
+                with engine.begin() as conn:
+                    conn.execute(text("ALTER TABLE workouts ADD COLUMN days_of_week VARCHAR(150);"))
+        
+        # Check if 'users' table exists before migrating
+        if inspector.has_table('users'):
+            existing_user_cols = [col['name'] for col in inspector.get_columns('users')]
+            
+            # Rename email -> phone only if email exists and phone doesn't
+            if 'email' in existing_user_cols and 'phone' not in existing_user_cols:
+                with engine.begin() as conn:
+                    if settings.DATABASE_URL.startswith('sqlite'):
+                        conn.execute(text("ALTER TABLE users RENAME COLUMN email TO phone;"))
+                    else:
+                        conn.execute(text("ALTER TABLE users RENAME COLUMN email TO phone;"))
+            
+            # Add password column if it doesn't exist
+            if 'password' not in existing_user_cols:
+                with engine.begin() as conn:
+                    conn.execute(text("ALTER TABLE users ADD COLUMN password VARCHAR(100);"))
+    except Exception as e:
+        print(f"[Migration Warning] Non-critical migration error: {e}")
 
-    try:
-        conn.execute(text("ALTER TABLE users ADD COLUMN password VARCHAR(100);"))
-        conn.commit()
-    except Exception:
-        pass
+safe_migrate()
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
     description="API REST de Gestão de Treinos Físicos para Professores e Alunos",
     version="1.0.0"
 )
+
+# Global exception handler to always return JSON (prevents "Internal Server Error" as plain text)
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    import traceback
+    print(f"[ERROR] Unhandled exception on {request.url}: {exc}")
+    traceback.print_exc()
+    return JSONResponse(
+        status_code=500,
+        content={"detail": f"Erro interno do servidor: {str(exc)}"}
+    )
 
 # Configure CORS so any local/mobile frontend can connect to our api
 app.add_middleware(
