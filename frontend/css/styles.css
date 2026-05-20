@@ -1188,3 +1188,32 @@ input:focus + .input-icon {
     background: var(--primary);
     color: #fff;
 }
+
+/* Weekly Schedule horizontal scroll system (Mobile Carousel) */
+.weekly-days-grid {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    padding-bottom: 8px;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+}
+.weekly-days-grid::-webkit-scrollbar {
+    height: 4px;
+}
+.weekly-days-grid::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 10px;
+}
+.weekly-days-grid::-webkit-scrollbar-thumb {
+    background: rgba(6, 182, 212, 0.2);
+    border-radius: 10px;
+}
+.weekly-days-grid::-webkit-scrollbar-thumb:hover {
+    background: rgba(6, 182, 212, 0.4);
+}
+.timeline-day-pill {
+    flex: 1 0 75px;
+    min-width: 75px;
+    box-sizing: border-box;
+}

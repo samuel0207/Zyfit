@@ -879,7 +879,7 @@ function renderStudentPortal() {
             <h3 style="font-size: 1rem; font-weight: 600; margin-bottom: 15px; display: flex; align-items: center; gap: 8px;">
                 <i class="fa-regular fa-calendar-check" style="color: var(--primary-color);"></i> Cronograma Semanal de Treinos
             </h3>
-            <div class="weekly-days-grid" style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; text-align: center;">
+            <div class="weekly-days-grid" style="text-align: center;">
                 ${daysOfWeekList.map((dayName, idx) => {
                     const isToday = dayName === currentDayMatched;
                     // Find workouts scheduled for this day
