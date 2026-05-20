@@ -12,7 +12,8 @@ let state = {
     selectedStudentId: null,
     workouts: [],
     studentWorkouts: [], // Current student portal workouts
-    activeStudentWorkoutId: null // Active workout tab in student portal
+    activeStudentWorkoutId: null, // Active workout tab in student portal
+    selectedTimelineDay: null // Active timeline day in student portal
 };
 
 // ==========================================================================
@@ -797,7 +798,42 @@ async function initStudentPortal() {
 function renderStudentPortal() {
     const studentMain = document.querySelector('.student-main');
     
-    // 1. Calculate general progress
+    // 1. Calculate Weekly Schedule Timeline
+    const daysOfWeekList = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"];
+    const daysShort = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
+    
+    // Get current day of the week in Portuguese
+    const dateOptions = { weekday: 'long' };
+    let currentDayRaw = new Intl.DateTimeFormat('pt-BR', dateOptions).format(new Date());
+    // Normalize to: capitalize first letter, remove "-feira"
+    let currentDayName = currentDayRaw.charAt(0).toUpperCase() + currentDayRaw.slice(1);
+    if (currentDayName.includes('-feira')) {
+        currentDayName = currentDayName.split('-')[0];
+    }
+    
+    // Safety check for accent characters
+    const dayMapping = {
+        'Segunda': 'Segunda', 'Terca': 'Terça', 'Terça': 'Terça',
+        'Quarta': 'Quarta', 'Quinta': 'Quinta', 'Sexta': 'Sexta',
+        'Sabado': 'Sábado', 'Sábado': 'Sábado', 'Domingo': 'Domingo'
+    };
+    const currentDayMatched = dayMapping[currentDayName] || 'Segunda';
+
+    // Auto-initialize selected timeline day to today
+    if (!state.selectedTimelineDay) {
+        state.selectedTimelineDay = currentDayMatched;
+        
+        // Auto-select active workout for today if it exists
+        const workoutsForToday = state.studentWorkouts.filter(w => 
+            w.days_of_week && w.days_of_week.includes(currentDayMatched)
+        );
+        if (workoutsForToday.length > 0) {
+            state.activeStudentWorkoutId = workoutsForToday[0].id;
+        } else if (state.studentWorkouts.length > 0) {
+            state.activeStudentWorkoutId = null; // rest day by default
+        }
+    }
+
     const activeWorkout = state.studentWorkouts.find(w => w.id === state.activeStudentWorkoutId);
     let totalExercises = 0;
     let completedExercises = 0;
@@ -852,27 +888,6 @@ function renderStudentPortal() {
             ` : ''}
         </div>
     `;
-    
-    // 1.5. Calculate Weekly Schedule Timeline
-    const daysOfWeekList = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"];
-    const daysShort = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
-    
-    // Get current day of the week in Portuguese
-    const dateOptions = { weekday: 'long' };
-    let currentDayRaw = new Intl.DateTimeFormat('pt-BR', dateOptions).format(new Date());
-    // Normalize to: capitalize first letter, remove "-feira"
-    let currentDayName = currentDayRaw.charAt(0).toUpperCase() + currentDayRaw.slice(1);
-    if (currentDayName.includes('-feira')) {
-        currentDayName = currentDayName.split('-')[0];
-    }
-    
-    // Safety check for accent characters
-    const dayMapping = {
-        'Segunda': 'Segunda', 'Terca': 'Terça', 'Terça': 'Terça',
-        'Quarta': 'Quarta', 'Quinta': 'Quinta', 'Sexta': 'Sexta',
-        'Sabado': 'Sábado', 'Sábado': 'Sábado', 'Domingo': 'Domingo'
-    };
-    const currentDayMatched = dayMapping[currentDayName] || 'Segunda';
 
     // Build timeline items
     const timelineHtml = `
@@ -883,23 +898,24 @@ function renderStudentPortal() {
             <div class="weekly-days-grid" style="text-align: center;">
                 ${daysOfWeekList.map((dayName, idx) => {
                     const isToday = dayName === currentDayMatched;
+                    const isSelected = dayName === state.selectedTimelineDay;
+                    
                     // Find workouts scheduled for this day
                     const workoutsForDay = state.studentWorkouts.filter(w => 
                         w.days_of_week && w.days_of_week.includes(dayName)
                     );
                     
                     let dayTreinoTitle = 'Descanso';
-                    let dayTreinoId = null;
-                    let hasTreino = false;
+                    hasTreino = false;
                     
                     if (workoutsForDay.length > 0) {
                         dayTreinoTitle = workoutsForDay[0].title;
-                        dayTreinoId = workoutsForDay[0].id;
                         hasTreino = true;
                     }
                     
                     const pillClasses = ['timeline-day-pill'];
                     if (isToday) pillClasses.push('is-today');
+                    if (isSelected) pillClasses.push('selected');
                     if (hasTreino) {
                         pillClasses.push('has-workout');
                     } else {
@@ -908,12 +924,8 @@ function renderStudentPortal() {
                     
                     const activePill = isToday ? `<span class="today-badge" style="font-size: 0.62rem; background: rgba(255,255,255,0.25); color: #fff; padding: 2px 6px; border-radius: 10px; font-weight: 600; display: inline-block; margin-top: 4px;">HOJE</span>` : '';
                     
-                    const clickHandler = dayTreinoId 
-                        ? `onclick="switchStudentWorkoutTab('${dayTreinoId}')" style="cursor: pointer;"`
-                        : '';
-
                     return `
-                        <div class="${pillClasses.join(' ')}" ${clickHandler}>
+                        <div class="${pillClasses.join(' ')}" onclick="selectTimelineDay('${dayName}')" style="cursor: pointer;">
                             <span class="day-name" style="font-size: 0.75rem; text-transform: uppercase; font-weight: 600; color: var(--text-secondary);">${daysShort[idx]}</span>
                             <div class="day-status" style="font-size: 0.65rem; font-weight: 500; margin-top: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; display: flex; align-items: center; gap: 2px; justify-content: center; color: ${hasTreino ? '#fff' : 'rgba(255,255,255,0.3)'};">
                                 ${hasTreino ? `<i class="fa-solid fa-dumbbell" style="font-size: 0.65rem; color: var(--primary-color);"></i>` : '<i class="fa-solid fa-bed" style="font-size: 0.65rem;"></i>'} 
@@ -944,16 +956,29 @@ function renderStudentPortal() {
     // Exercises HTML
     let exercisesHtml = '';
     if (!activeWorkout) {
-        exercisesHtml = `
-            <div class="empty-state glass-card" style="padding: 40px;">
-                <i class="fa-solid fa-clipboard-question" style="font-size: 3rem; color: rgba(255,255,255,0.05); margin-bottom: 16px;"></i>
-                <h4>Nenhuma ficha disponível</h4>
-                <p>Sua professora ainda não vinculou nenhuma ficha de treino ativa para você.</p>
-            </div>
-        `;
+        if (state.studentWorkouts.length === 0) {
+            exercisesHtml = `
+                <div class="empty-state glass-card" style="padding: 40px;">
+                    <i class="fa-solid fa-clipboard-question" style="font-size: 3rem; color: rgba(255,255,255,0.05); margin-bottom: 16px;"></i>
+                    <h4>Nenhuma ficha disponível</h4>
+                    <p>Sua professora ainda não vinculou nenhuma ficha de treino ativa para você.</p>
+                </div>
+            `;
+        } else {
+            // Scheduled Rest Day!
+            exercisesHtml = `
+                <div class="empty-state glass-card" style="padding: 50px 20px; text-align: center; margin-top: 20px;">
+                    <div style="font-size: 3.5rem; margin-bottom: 20px; filter: drop-shadow(0 0 10px rgba(6, 182, 212, 0.2));">😴</div>
+                    <h3 style="font-size: 1.3rem; font-weight: 700; color: #fff; margin-bottom: 10px;">Dia de Descanso e Recuperação</h3>
+                    <p style="color: var(--text-secondary); max-width: 450px; margin: 0 auto; font-size: 0.92rem; line-height: 1.6;">
+                        Não há treinos agendados para <strong>${state.selectedTimelineDay}</strong>. Aproveite para descansar a musculatura, se manter hidratado e se recuperar para o próximo treino! 💧
+                    </p>
+                </div>
+            `;
+        }
     } else if (!activeWorkout.exercises || activeWorkout.exercises.length === 0) {
         exercisesHtml = `
-            <div class="empty-state glass-card" style="padding: 40px;">
+            <div class="empty-state glass-card" style="padding: 40px; margin-top: 20px;">
                 <i class="fa-solid fa-dumbbell" style="font-size: 3rem; color: rgba(255,255,255,0.05); margin-bottom: 16px;"></i>
                 <h4>Ficha "${activeWorkout.title}" vazia</h4>
                 <p>Não há exercícios cadastrados nesta ficha. Aguarde a professora adicionar.</p>
@@ -961,7 +986,7 @@ function renderStudentPortal() {
         `;
     } else {
         exercisesHtml = `
-            <div class="student-exercises-list">
+            <div class="student-exercises-list" style="margin-top: 20px;">
                 ${activeWorkout.exercises.map((ex, idx) => `
                     <div class="student-exercise-card glass-card ${ex.completed_today ? 'completed' : ''}">
                         <div class="student-exercise-left">
@@ -996,8 +1021,35 @@ function renderStudentPortal() {
     studentMain.innerHTML = welcomeHtml + timelineHtml + tabsHtml + exercisesHtml;
 }
 
+function selectTimelineDay(dayName) {
+    state.selectedTimelineDay = dayName;
+    
+    // Find workouts scheduled for this day
+    const workoutsForDay = state.studentWorkouts.filter(w => 
+        w.days_of_week && w.days_of_week.includes(dayName)
+    );
+    
+    if (workoutsForDay.length > 0) {
+        state.activeStudentWorkoutId = workoutsForDay[0].id;
+    } else {
+        state.activeStudentWorkoutId = null; // rest day!
+    }
+    
+    renderStudentPortal();
+}
+
 function switchStudentWorkoutTab(workoutId) {
     state.activeStudentWorkoutId = workoutId;
+    
+    // Sync the selected day with the first day this workout is scheduled for
+    const workout = state.studentWorkouts.find(w => w.id === workoutId);
+    if (workout && workout.days_of_week) {
+        const days = workout.days_of_week.split(',').map(d => d.trim());
+        if (days.length > 0) {
+            state.selectedTimelineDay = days[0];
+        }
+    }
+    
     renderStudentPortal();
 }
 

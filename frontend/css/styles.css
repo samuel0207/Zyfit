@@ -1271,6 +1271,18 @@ input:focus + .input-icon {
     color: #ffffff !important;
     font-weight: 700 !important;
 }
+
+/* Premium Selected Day Highlight Style */
+.timeline-day-pill.selected {
+    border-color: var(--accent-student) !important;
+    background: rgba(6, 182, 212, 0.15) !important;
+    box-shadow: 0 0 14px rgba(6, 182, 212, 0.22) !important;
+    opacity: 1 !important;
+}
+.timeline-day-pill.selected .day-name {
+    color: var(--accent-student) !important;
+    font-weight: 700 !important;
+}
 .timeline-day-pill.is-today .day-status {
     color: rgba(255, 255, 255, 0.9) !important;
 }

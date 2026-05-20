@@ -85,6 +85,7 @@ class WorkoutCreate(WorkoutBase):
 class WorkoutUpdate(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
+    days_of_week: Optional[str] = None
 
 class WorkoutResponse(WorkoutBase):
     id: str
