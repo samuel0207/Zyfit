@@ -88,8 +88,20 @@
             </div>
         </header>
 
-        <!-- Dashboard Content -->
-        <main class="dashboard-main">
+        <!-- Admin Tab Navigation -->
+        <nav class="admin-tabs-nav">
+            <button class="admin-tab active" data-tab="tab-students" onclick="switchAdminTab('tab-students')">
+                <i class="fa-solid fa-users-gear"></i>
+                <span>Alunos</span>
+            </button>
+            <button class="admin-tab" data-tab="tab-catalog" onclick="switchAdminTab('tab-catalog')">
+                <i class="fa-solid fa-book-open"></i>
+                <span>Catálogo de Exercícios</span>
+            </button>
+        </nav>
+
+        <!-- TAB 1: Alunos (existing layout) -->
+        <main id="tab-students" class="dashboard-main admin-tab-content">
             <!-- Sidebar / Listagem de Alunos -->
             <div class="sidebar-layout">
                 <div class="students-section glass-card">
@@ -102,7 +114,7 @@
                     
                     <div class="search-box">
                         <i class="fa-solid fa-magnifying-glass"></i>
-                        <input type="text" id="student-search" placeholder="Buscar aluno por nome ou e-mail...">
+                        <input type="text" id="student-search" placeholder="Buscar aluno por nome ou telefone...">
                     </div>
                     
                     <div id="students-list" class="students-list">
@@ -177,6 +189,50 @@
                                 <!-- Dynamic Workout Cards containing exercises -->
                             </div>
                         </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- TAB 2: Catálogo de Exercícios -->
+        <main id="tab-catalog" class="dashboard-main admin-tab-content hidden">
+            <div class="catalog-container">
+                <div class="catalog-header">
+                    <div>
+                        <h2><i class="fa-solid fa-book-open"></i> Catálogo de Exercícios</h2>
+                        <p class="catalog-subtitle">Cadastre exercícios uma vez e reutilize nas fichas de todos os alunos</p>
+                    </div>
+                    <button id="btn-add-catalog-modal" class="btn-primary">
+                        <i class="fa-solid fa-plus"></i> Novo Exercício
+                    </button>
+                </div>
+
+                <!-- Filters -->
+                <div class="catalog-filters glass-card">
+                    <div class="catalog-search-box">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <input type="text" id="catalog-search" placeholder="Buscar exercício por nome...">
+                    </div>
+                    <div class="muscle-group-filters" id="muscle-group-filters">
+                        <button class="muscle-filter-pill active" data-group="" onclick="filterCatalogByGroup('')">Todos</button>
+                        <button class="muscle-filter-pill" data-group="Peito" onclick="filterCatalogByGroup('Peito')">Peito</button>
+                        <button class="muscle-filter-pill" data-group="Costas" onclick="filterCatalogByGroup('Costas')">Costas</button>
+                        <button class="muscle-filter-pill" data-group="Ombros" onclick="filterCatalogByGroup('Ombros')">Ombros</button>
+                        <button class="muscle-filter-pill" data-group="Bíceps" onclick="filterCatalogByGroup('Bíceps')">Bíceps</button>
+                        <button class="muscle-filter-pill" data-group="Tríceps" onclick="filterCatalogByGroup('Tríceps')">Tríceps</button>
+                        <button class="muscle-filter-pill" data-group="Quadríceps" onclick="filterCatalogByGroup('Quadríceps')">Quadríceps</button>
+                        <button class="muscle-filter-pill" data-group="Posterior" onclick="filterCatalogByGroup('Posterior')">Posterior</button>
+                        <button class="muscle-filter-pill" data-group="Glúteos" onclick="filterCatalogByGroup('Glúteos')">Glúteos</button>
+                        <button class="muscle-filter-pill" data-group="Abdômen" onclick="filterCatalogByGroup('Abdômen')">Abdômen</button>
+                        <button class="muscle-filter-pill" data-group="Outro" onclick="filterCatalogByGroup('Outro')">Outro</button>
+                    </div>
+                </div>
+
+                <!-- Catalog Grid -->
+                <div id="catalog-list" class="catalog-grid">
+                    <div class="loading-state">
+                        <i class="fa-solid fa-circle-notch fa-spin"></i>
+                        <p>Carregando catálogo...</p>
                     </div>
                 </div>
             </div>
@@ -325,7 +381,7 @@
         </div>
     </div>
 
-    <!-- Modal: Criar / Editar Exercício -->
+    <!-- Modal: Criar / Editar Exercício (with Catalog Selector) -->
     <div id="modal-exercise" class="modal hidden">
         <div class="modal-content glass-card">
             <div class="modal-header">
@@ -336,6 +392,15 @@
                 <input type="hidden" id="exercise-form-id">
                 <input type="hidden" id="exercise-workout-id">
                 
+                <!-- Catalog Quick Selector -->
+                <div class="input-group" id="exercise-catalog-selector-group">
+                    <label><i class="fa-solid fa-book-open" style="color: var(--primary); margin-right: 4px;"></i> Selecionar do Catálogo (opcional)</label>
+                    <select id="exercise-catalog-select" onchange="onCatalogExerciseSelected(this.value)">
+                        <option value="">-- Digitar manualmente --</option>
+                    </select>
+                    <small class="input-help">Selecione um exercício do catálogo para preencher automaticamente nome e vídeo, ou digite manualmente abaixo.</small>
+                </div>
+
                 <div class="input-group">
                     <label for="exercise-name">Nome do Exercício</label>
                     <input type="text" id="exercise-name" required placeholder="Ex: Supino Reto com Barra">
@@ -365,6 +430,56 @@
                 <div class="modal-footer">
                     <button type="button" class="btn-secondary btn-close-modal">Cancelar</button>
                     <button type="submit" class="btn-primary">Salvar Exercício</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Criar / Editar Exercício do Catálogo -->
+    <div id="modal-catalog-exercise" class="modal hidden">
+        <div class="modal-content glass-card">
+            <div class="modal-header">
+                <h3 id="modal-catalog-title">Novo Exercício no Catálogo</h3>
+                <button class="btn-close-modal"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="form-catalog-exercise">
+                <input type="hidden" id="catalog-form-id">
+                
+                <div class="input-group">
+                    <label for="catalog-exercise-name">Nome do Exercício</label>
+                    <input type="text" id="catalog-exercise-name" required placeholder="Ex: Supino Reto com Barra">
+                </div>
+
+                <div class="input-group">
+                    <label for="catalog-exercise-muscle-group">Grupo Muscular</label>
+                    <select id="catalog-exercise-muscle-group">
+                        <option value="">-- Selecionar --</option>
+                        <option value="Peito">Peito</option>
+                        <option value="Costas">Costas</option>
+                        <option value="Ombros">Ombros</option>
+                        <option value="Bíceps">Bíceps</option>
+                        <option value="Tríceps">Tríceps</option>
+                        <option value="Quadríceps">Quadríceps</option>
+                        <option value="Posterior">Posterior</option>
+                        <option value="Glúteos">Glúteos</option>
+                        <option value="Abdômen">Abdômen</option>
+                        <option value="Outro">Outro</option>
+                    </select>
+                </div>
+                
+                <div class="input-group">
+                    <label for="catalog-exercise-video">URL do Vídeo Demonstrativo</label>
+                    <input type="url" id="catalog-exercise-video" placeholder="https://www.youtube.com/watch?v=...">
+                </div>
+
+                <div class="input-group">
+                    <label for="catalog-exercise-description">Observações / Instruções</label>
+                    <textarea id="catalog-exercise-description" rows="3" placeholder="Ex: Manter cotovelos a 45°, cadência 3 segundos na fase excêntrica..."></textarea>
+                </div>
+                
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary btn-close-modal">Cancelar</button>
+                    <button type="submit" class="btn-primary">Salvar no Catálogo</button>
                 </div>
             </form>
         </div>

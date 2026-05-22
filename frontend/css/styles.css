@@ -1330,3 +1330,285 @@ input:focus + .input-icon {
         max-width: 13%;
     }
 }
+
+/* ==========================================================================
+   ADMIN TAB NAVIGATION SYSTEM
+   ========================================================================== */
+.admin-tabs-nav {
+    display: flex;
+    gap: 0;
+    background: rgba(13, 11, 20, 0.6);
+    border-bottom: 1px solid var(--border-color);
+    padding: 0 30px;
+    position: sticky;
+    top: 70px;
+    z-index: 40;
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+}
+.admin-tab {
+    background: transparent;
+    color: var(--text-secondary);
+    border: none;
+    border-bottom: 3px solid transparent;
+    border-radius: 0;
+    padding: 14px 24px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition-smooth);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.admin-tab:hover {
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.02);
+}
+.admin-tab.active {
+    color: var(--primary-hover);
+    border-bottom-color: var(--primary);
+    background: rgba(139, 92, 246, 0.04);
+}
+.admin-tab.active i {
+    color: var(--primary);
+}
+.admin-tab-content.hidden {
+    display: none !important;
+}
+
+/* ==========================================================================
+   EXERCISE CATALOG PAGE
+   ========================================================================== */
+.catalog-container {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+.catalog-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+.catalog-header h2 {
+    font-size: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.catalog-header h2 i {
+    color: var(--primary);
+}
+.catalog-subtitle {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    margin-top: 4px;
+}
+
+/* Catalog Filters */
+.catalog-filters {
+    padding: 20px;
+    margin-bottom: 24px;
+}
+.catalog-search-box {
+    position: relative;
+    margin-bottom: 16px;
+}
+.catalog-search-box i {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+}
+.catalog-search-box input {
+    padding-left: 40px;
+    background: rgba(0, 0, 0, 0.15);
+}
+
+.muscle-group-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.muscle-filter-pill {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: var(--text-secondary);
+    padding: 6px 14px;
+    border-radius: var(--radius-full);
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition-smooth);
+}
+.muscle-filter-pill:hover {
+    background: rgba(139, 92, 246, 0.08);
+    color: var(--text-primary);
+    border-color: rgba(139, 92, 246, 0.3);
+}
+.muscle-filter-pill.active {
+    background: var(--primary);
+    color: #fff;
+    border-color: var(--primary);
+    box-shadow: 0 4px 12px var(--primary-glow);
+}
+
+/* Catalog Grid */
+.catalog-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 16px;
+}
+
+.catalog-card {
+    background: var(--bg-surface);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    transition: var(--transition-smooth);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+.catalog-card:hover {
+    border-color: rgba(139, 92, 246, 0.25);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+.catalog-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+}
+.catalog-card-header h4 {
+    font-size: 1rem;
+    font-weight: 700;
+    flex: 1;
+    line-height: 1.4;
+}
+.catalog-card-actions {
+    display: flex;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+.muscle-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: var(--radius-full);
+    background: rgba(139, 92, 246, 0.1);
+    color: var(--primary-hover);
+    border: 1px solid rgba(139, 92, 246, 0.2);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+.catalog-card-description {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+.catalog-card-video {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    word-break: break-all;
+}
+.catalog-card-video i {
+    color: var(--primary);
+}
+
+/* Select Dropdown Styling */
+select {
+    width: 100%;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 12px 16px;
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    font-size: 0.95rem;
+    transition: var(--transition-smooth);
+    outline: none;
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'%3E%3C/path%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+}
+select:focus {
+    border-color: var(--primary);
+    background-color: rgba(0, 0, 0, 0.35);
+    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.15);
+}
+select option {
+    background: #1a1630;
+    color: var(--text-primary);
+}
+
+/* Catalog Empty State */
+.catalog-empty-state {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 60px 20px;
+}
+.catalog-empty-state i {
+    font-size: 3.5rem;
+    color: rgba(255, 255, 255, 0.04);
+    margin-bottom: 20px;
+}
+.catalog-empty-state h4 {
+    font-size: 1.15rem;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+}
+.catalog-empty-state p {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+/* Responsive Catalog */
+@media (max-width: 768px) {
+    .admin-tabs-nav {
+        padding: 0 16px;
+    }
+    .admin-tab {
+        padding: 12px 16px;
+        font-size: 0.82rem;
+    }
+    .admin-tab span {
+        display: none;
+    }
+    .admin-tab i {
+        font-size: 1.1rem;
+    }
+    .catalog-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .catalog-grid {
+        grid-template-columns: 1fr;
+    }
+    .muscle-group-filters {
+        overflow-x: auto;
+        flex-wrap: nowrap;
+        padding-bottom: 8px;
+    }
+    .muscle-filter-pill {
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+}
+

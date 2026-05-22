@@ -132,3 +132,28 @@ class ExerciseCompletionResponse(BaseModel):
     class Config:
         from_attributes = True
         orm_mode = True
+
+
+# ----------------- EXERCISE CATALOG SCHEMAS -----------------
+class CatalogExerciseBase(BaseModel):
+    name: str
+    muscle_group: Optional[str] = None
+    video_url: Optional[str] = None
+    description: Optional[str] = None
+
+class CatalogExerciseCreate(CatalogExerciseBase):
+    pass
+
+class CatalogExerciseUpdate(BaseModel):
+    name: Optional[str] = None
+    muscle_group: Optional[str] = None
+    video_url: Optional[str] = None
+    description: Optional[str] = None
+
+class CatalogExerciseResponse(CatalogExerciseBase):
+    id: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+        orm_mode = True

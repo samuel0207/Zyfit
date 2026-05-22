@@ -81,3 +81,15 @@ class ExerciseCompletion(Base):
     # Relationships
     student = relationship("User", back_populates="completions")
     exercise = relationship("Exercise", back_populates="completions")
+
+
+class ExerciseCatalog(Base):
+    """Global exercise library/catalog — exercise templates reusable across all students."""
+    __tablename__ = "exercise_catalog"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    name = Column(String(500), nullable=False)
+    muscle_group = Column(String(100), nullable=True)  # e.g. "Peito", "Costas", "Pernas"
+    video_url = Column(String(512), nullable=True)
+    description = Column(Text, nullable=True)  # Optional instructions/notes
+    created_at = Column(DateTime, default=datetime.utcnow)

@@ -11,6 +11,8 @@ let state = {
     students: [],
     selectedStudentId: null,
     workouts: [],
+    catalogExercises: [], // Global exercise catalog
+    catalogFilterGroup: '', // Active muscle group filter
     studentWorkouts: [], // Current student portal workouts
     activeStudentWorkoutId: null, // Active workout tab in student portal
     selectedTimelineDay: null // Active timeline day in student portal
@@ -694,6 +696,9 @@ function openAddExercise(workoutId) {
     document.getElementById('modal-exercise-title').innerText = 'Adicionar Exercício';
     document.getElementById('exercise-form-id').value = '';
     document.getElementById('exercise-workout-id').value = workoutId;
+    document.getElementById('exercise-catalog-select').value = '';
+    document.getElementById('exercise-catalog-selector-group').style.display = 'block';
+    populateCatalogSelector();
     openModal('modal-exercise');
 }
 
@@ -712,6 +717,7 @@ function openEditExercise(workoutId, exerciseId) {
     document.getElementById('exercise-repetitions').value = ex.repetitions;
     document.getElementById('exercise-rest').value = ex.rest_time;
     document.getElementById('exercise-video').value = ex.video_url || '';
+    document.getElementById('exercise-catalog-selector-group').style.display = 'none';
     openModal('modal-exercise');
 }
 
@@ -764,6 +770,7 @@ function setupEventListeners() {
     document.getElementById('form-student').addEventListener('submit', handleStudentSubmit);
     document.getElementById('form-workout').addEventListener('submit', handleWorkoutSubmit);
     document.getElementById('form-exercise').addEventListener('submit', handleExerciseSubmit);
+    document.getElementById('form-catalog-exercise').addEventListener('submit', handleCatalogExerciseSubmit);
 
     // 6. Dynamic student search filter
     const searchInput = document.getElementById('student-search');
@@ -777,6 +784,28 @@ function setupEventListeners() {
             renderStudentsList(filtered);
         });
     }
+
+    // 7. Catalog search filter
+    const catalogSearchInput = document.getElementById('catalog-search');
+    if (catalogSearchInput) {
+        catalogSearchInput.addEventListener('input', (e) => {
+            const q = e.target.value.toLowerCase().trim();
+            const filtered = state.catalogExercises.filter(ex => {
+                const matchesName = ex.name.toLowerCase().includes(q);
+                const matchesGroup = !state.catalogFilterGroup || ex.muscle_group === state.catalogFilterGroup;
+                return matchesName && matchesGroup;
+            });
+            renderCatalogList(filtered);
+        });
+    }
+
+    // 8. Catalog modal open button
+    document.getElementById('btn-add-catalog-modal').addEventListener('click', () => {
+        document.getElementById('form-catalog-exercise').reset();
+        document.getElementById('modal-catalog-title').innerText = 'Novo Exercício no Catálogo';
+        document.getElementById('catalog-form-id').value = '';
+        openModal('modal-catalog-exercise');
+    });
 }
 
 // ==========================================================================
@@ -1148,3 +1177,231 @@ function parseVimeoUrl(url) {
     return null;
 }
 
+
+// ==========================================================================
+// ADMIN TAB SWITCHING SYSTEM
+// ==========================================================================
+function switchAdminTab(tabId) {
+    // Toggle tab buttons
+    document.querySelectorAll('.admin-tab').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.tab === tabId);
+    });
+    
+    // Toggle tab content
+    document.querySelectorAll('.admin-tab-content').forEach(content => {
+        content.classList.add('hidden');
+    });
+    const activeContent = document.getElementById(tabId);
+    if (activeContent) {
+        activeContent.classList.remove('hidden');
+    }
+    
+    // Load catalog data when switching to catalog tab
+    if (tabId === 'tab-catalog') {
+        fetchCatalogExercises();
+    }
+}
+
+
+// ==========================================================================
+// MÓDULO DO CATÁLOGO DE EXERCÍCIOS (CRUD)
+// ==========================================================================
+async function fetchCatalogExercises() {
+    const listContainer = document.getElementById('catalog-list');
+    
+    try {
+        const exercises = await apiRequest('/api/catalog');
+        state.catalogExercises = exercises;
+        renderCatalogList(exercises);
+    } catch (e) {
+        listContainer.innerHTML = `
+            <div class="catalog-empty-state">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+                <h4>Falha ao carregar catálogo</h4>
+                <p>Verifique sua conexão e tente novamente.</p>
+            </div>
+        `;
+    }
+}
+
+function renderCatalogList(exercisesList) {
+    const listContainer = document.getElementById('catalog-list');
+    
+    if (exercisesList.length === 0) {
+        const isFiltering = state.catalogFilterGroup || document.getElementById('catalog-search').value;
+        listContainer.innerHTML = `
+            <div class="catalog-empty-state">
+                <i class="fa-solid fa-${isFiltering ? 'filter-circle-xmark' : 'book-open'}"></i>
+                <h4>${isFiltering ? 'Nenhum exercício encontrado' : 'Catálogo vazio'}</h4>
+                <p>${isFiltering 
+                    ? 'Nenhum exercício corresponde aos filtros aplicados.' 
+                    : 'Cadastre seu primeiro exercício clicando em "Novo Exercício" acima.'
+                }</p>
+            </div>
+        `;
+        return;
+    }
+    
+    listContainer.innerHTML = exercisesList.map(ex => `
+        <div class="catalog-card">
+            <div class="catalog-card-header">
+                <h4>${ex.name}</h4>
+                <div class="catalog-card-actions">
+                    <button class="btn-icon-sm" onclick="openEditCatalogExercise('${ex.id}')" title="Editar exercício">
+                        <i class="fa-regular fa-pen-to-square"></i>
+                    </button>
+                    <button class="btn-icon-sm btn-danger" onclick="deleteCatalogExercise('${ex.id}')" title="Excluir exercício">
+                        <i class="fa-regular fa-trash-can"></i>
+                    </button>
+                </div>
+            </div>
+            ${ex.muscle_group 
+                ? `<div><span class="muscle-badge"><i class="fa-solid fa-crosshairs"></i> ${ex.muscle_group}</span></div>` 
+                : ''
+            }
+            ${ex.description 
+                ? `<p class="catalog-card-description">${ex.description}</p>` 
+                : ''
+            }
+            ${ex.video_url 
+                ? `<div class="catalog-card-video"><i class="fa-brands fa-youtube"></i> ${ex.video_url}</div>` 
+                : ''
+            }
+        </div>
+    `).join('');
+}
+
+function filterCatalogByGroup(group) {
+    state.catalogFilterGroup = group;
+    
+    // Toggle active pill
+    document.querySelectorAll('.muscle-filter-pill').forEach(pill => {
+        pill.classList.toggle('active', pill.dataset.group === group);
+    });
+    
+    // Filter and render
+    const searchQuery = document.getElementById('catalog-search').value.toLowerCase().trim();
+    const filtered = state.catalogExercises.filter(ex => {
+        const matchesGroup = !group || ex.muscle_group === group;
+        const matchesSearch = !searchQuery || ex.name.toLowerCase().includes(searchQuery);
+        return matchesGroup && matchesSearch;
+    });
+    renderCatalogList(filtered);
+}
+
+async function handleCatalogExerciseSubmit(event) {
+    event.preventDefault();
+    const id = document.getElementById('catalog-form-id').value;
+    const name = document.getElementById('catalog-exercise-name').value;
+    const muscle_group = document.getElementById('catalog-exercise-muscle-group').value || null;
+    const video_url = document.getElementById('catalog-exercise-video').value || null;
+    const description = document.getElementById('catalog-exercise-description').value || null;
+    
+    const payload = { name, muscle_group, video_url, description };
+    
+    try {
+        if (id) {
+            await apiRequest(`/api/catalog/${id}`, {
+                method: 'PUT',
+                body: JSON.stringify(payload)
+            });
+            showToast('Exercício do catálogo atualizado!', 'success');
+        } else {
+            await apiRequest('/api/catalog', {
+                method: 'POST',
+                body: JSON.stringify(payload)
+            });
+            showToast('Exercício adicionado ao catálogo!', 'success');
+        }
+        
+        closeModal('modal-catalog-exercise');
+        fetchCatalogExercises();
+    } catch (e) {
+        showToast(e.message || 'Erro ao salvar exercício no catálogo.', 'error');
+    }
+}
+
+function openEditCatalogExercise(exerciseId) {
+    const ex = state.catalogExercises.find(e => e.id === exerciseId);
+    if (!ex) return;
+    
+    document.getElementById('modal-catalog-title').innerText = 'Editar Exercício do Catálogo';
+    document.getElementById('catalog-form-id').value = ex.id;
+    document.getElementById('catalog-exercise-name').value = ex.name;
+    document.getElementById('catalog-exercise-muscle-group').value = ex.muscle_group || '';
+    document.getElementById('catalog-exercise-video').value = ex.video_url || '';
+    document.getElementById('catalog-exercise-description').value = ex.description || '';
+    openModal('modal-catalog-exercise');
+}
+
+async function deleteCatalogExercise(exerciseId) {
+    if (!confirm('Deseja excluir este exercício do catálogo? Isso não afeta exercícios já adicionados às fichas dos alunos.')) {
+        return;
+    }
+    
+    try {
+        await apiRequest(`/api/catalog/${exerciseId}`, {
+            method: 'DELETE'
+        });
+        showToast('Exercício removido do catálogo!', 'success');
+        fetchCatalogExercises();
+    } catch (e) {
+        showToast(e.message || 'Falha ao excluir exercício do catálogo.', 'error');
+    }
+}
+
+
+// ==========================================================================
+// CATALOG SELECTOR IN EXERCISE MODAL
+// ==========================================================================
+async function populateCatalogSelector() {
+    const select = document.getElementById('exercise-catalog-select');
+    if (!select) return;
+    
+    // Fetch catalog if not already loaded
+    if (state.catalogExercises.length === 0) {
+        try {
+            const exercises = await apiRequest('/api/catalog');
+            state.catalogExercises = exercises;
+        } catch (e) {
+            // Silently fail — manual entry still works
+        }
+    }
+    
+    // Build options grouped by muscle group
+    select.innerHTML = '<option value="">-- Digitar manualmente --</option>';
+    
+    const groups = {};
+    state.catalogExercises.forEach(ex => {
+        const group = ex.muscle_group || 'Sem grupo';
+        if (!groups[group]) groups[group] = [];
+        groups[group].push(ex);
+    });
+    
+    Object.keys(groups).sort().forEach(groupName => {
+        const optgroup = document.createElement('optgroup');
+        optgroup.label = groupName;
+        groups[groupName].forEach(ex => {
+            const option = document.createElement('option');
+            option.value = ex.id;
+            option.textContent = ex.name;
+            option.dataset.name = ex.name;
+            option.dataset.videoUrl = ex.video_url || '';
+            optgroup.appendChild(option);
+        });
+        select.appendChild(optgroup);
+    });
+}
+
+function onCatalogExerciseSelected(catalogId) {
+    if (!catalogId) return; // Manual entry selected
+    
+    const exercise = state.catalogExercises.find(ex => ex.id === catalogId);
+    if (!exercise) return;
+    
+    // Auto-fill fields from catalog
+    document.getElementById('exercise-name').value = exercise.name;
+    if (exercise.video_url) {
+        document.getElementById('exercise-video').value = exercise.video_url;
+    }
+}

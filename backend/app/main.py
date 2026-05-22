@@ -572,6 +572,78 @@ def undo_complete_exercise(
     db.commit()
     return None
 
+
+# -------------------------------------------------------------
+# 6. CATÁLOGO GLOBAL DE EXERCÍCIOS (Apenas Admin)
+# -------------------------------------------------------------
+
+@app.get("/api/catalog", response_model=List[schemas.CatalogExerciseResponse])
+def list_catalog_exercises(
+    q: Optional[str] = None,
+    muscle_group: Optional[str] = None,
+    db: Session = Depends(get_db),
+    admin: models.User = Depends(auth.get_admin_user)
+):
+    query = db.query(models.ExerciseCatalog)
+    if q:
+        query = query.filter(models.ExerciseCatalog.name.ilike(f"%{q}%"))
+    if muscle_group:
+        query = query.filter(models.ExerciseCatalog.muscle_group == muscle_group)
+    return query.order_by(models.ExerciseCatalog.name).all()
+
+
+@app.post("/api/catalog", response_model=schemas.CatalogExerciseResponse, status_code=status.HTTP_201_CREATED)
+def create_catalog_exercise(
+    catalog_in: schemas.CatalogExerciseCreate,
+    db: Session = Depends(get_db),
+    admin: models.User = Depends(auth.get_admin_user)
+):
+    catalog_exercise = models.ExerciseCatalog(
+        name=catalog_in.name,
+        muscle_group=catalog_in.muscle_group,
+        video_url=catalog_in.video_url,
+        description=catalog_in.description
+    )
+    db.add(catalog_exercise)
+    db.commit()
+    db.refresh(catalog_exercise)
+    return catalog_exercise
+
+
+@app.put("/api/catalog/{catalog_id}", response_model=schemas.CatalogExerciseResponse)
+def update_catalog_exercise(
+    catalog_id: str,
+    catalog_in: schemas.CatalogExerciseUpdate,
+    db: Session = Depends(get_db),
+    admin: models.User = Depends(auth.get_admin_user)
+):
+    catalog_exercise = db.query(models.ExerciseCatalog).filter(models.ExerciseCatalog.id == catalog_id).first()
+    if not catalog_exercise:
+        raise HTTPException(status_code=404, detail="Exercício do catálogo não encontrado.")
+    
+    update_data = catalog_in.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(catalog_exercise, key, value)
+    
+    db.commit()
+    db.refresh(catalog_exercise)
+    return catalog_exercise
+
+
+@app.delete("/api/catalog/{catalog_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_catalog_exercise(
+    catalog_id: str,
+    db: Session = Depends(get_db),
+    admin: models.User = Depends(auth.get_admin_user)
+):
+    catalog_exercise = db.query(models.ExerciseCatalog).filter(models.ExerciseCatalog.id == catalog_id).first()
+    if not catalog_exercise:
+        raise HTTPException(status_code=404, detail="Exercício do catálogo não encontrado.")
+    
+    db.delete(catalog_exercise)
+    db.commit()
+    return None
+
 from fastapi.staticfiles import StaticFiles
 import os
 
