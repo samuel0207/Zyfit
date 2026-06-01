@@ -644,6 +644,89 @@ def delete_catalog_exercise(
     db.commit()
     return None
 
+
+# -------------------------------------------------------------
+# 7. ATIVIDADE DOS ALUNOS (Datas e Exercícios - Apenas Admin)
+# -------------------------------------------------------------
+
+@app.get("/api/students/{student_id}/activity")
+def get_student_activity(
+    student_id: str,
+    days: int = Query(default=30, ge=1, le=365, description="Número de dias para consultar"),
+    db: Session = Depends(get_db),
+    admin: models.User = Depends(auth.get_admin_user)
+):
+    """
+    Returns the student's exercise completion history for the last N days.
+    Includes active dates and exercises executed.
+    """
+    from datetime import timedelta
+    
+    # Verify student exists
+    student = db.query(models.User).filter(models.User.id == student_id, models.User.role == "student").first()
+    if not student:
+        raise HTTPException(status_code=404, detail="Estudante não encontrado.")
+    
+    # Calculate date range
+    end_date = date.today()
+    start_date = end_date - timedelta(days=days)
+    
+    # Get all completions for this student within the date range
+    completions = (
+        db.query(models.ExerciseCompletion)
+        .filter(
+            models.ExerciseCompletion.student_id == student_id,
+            models.ExerciseCompletion.completed_date >= start_date,
+            models.ExerciseCompletion.completed_date <= end_date
+        )
+        .order_by(models.ExerciseCompletion.completed_date.desc(), models.ExerciseCompletion.completed_at.desc())
+        .all()
+    )
+    
+    # Build response grouped by date
+    activity_by_date = {}
+    for comp in completions:
+        date_str = comp.completed_date.isoformat()
+        if date_str not in activity_by_date:
+            activity_by_date[date_str] = {
+                "date": date_str,
+                "exercises": []
+            }
+        
+        # Get exercise and workout info
+        exercise = db.query(models.Exercise).filter(models.Exercise.id == comp.exercise_id).first()
+        workout = None
+        if exercise:
+            workout = db.query(models.Workout).filter(models.Workout.id == exercise.workout_id).first()
+        
+        activity_by_date[date_str]["exercises"].append({
+            "exercise_id": comp.exercise_id,
+            "exercise_name": exercise.name if exercise else "Exercício removido",
+            "workout_title": workout.title if workout else "Ficha removida",
+            "completed_at": comp.completed_at.isoformat() if comp.completed_at else None
+        })
+    
+    # Sort dates descending
+    sorted_activity = sorted(activity_by_date.values(), key=lambda x: x["date"], reverse=True)
+    
+    # Calculate summary stats
+    total_active_days = len(activity_by_date)
+    total_exercises_done = len(completions)
+    
+    # Active dates list (for calendar highlights)
+    active_dates = list(activity_by_date.keys())
+    
+    return {
+        "student_id": student_id,
+        "student_name": student.name,
+        "period_days": days,
+        "total_active_days": total_active_days,
+        "total_exercises_done": total_exercises_done,
+        "active_dates": active_dates,
+        "activity": sorted_activity
+    }
+
+
 from fastapi.staticfiles import StaticFiles
 import os
 

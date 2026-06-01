@@ -305,6 +305,11 @@ async function selectStudent(studentId) {
     
     // Fetch and render Workouts/Treinos
     fetchWorkouts(studentId);
+    
+    // Fetch and render Activity Panel
+    const periodSelect = document.getElementById('activity-period-select');
+    const selectedDays = periodSelect ? parseInt(periodSelect.value) : 30;
+    fetchStudentActivity(studentId, selectedDays);
 }
 
 async function handleStudentSubmit(event) {
@@ -1403,5 +1408,224 @@ function onCatalogExerciseSelected(catalogId) {
     document.getElementById('exercise-name').value = exercise.name;
     if (exercise.video_url) {
         document.getElementById('exercise-video').value = exercise.video_url;
+    }
+}
+
+
+// ==========================================================================
+// MÓDULO DO PROFESSOR: PAINEL DE ATIVIDADE DO ALUNO
+// ==========================================================================
+let currentActivityData = null;
+
+async function fetchStudentActivity(studentId, days = 30) {
+    const timelineContainer = document.getElementById('activity-timeline');
+    const calendarGrid = document.getElementById('activity-calendar-grid');
+    
+    if (timelineContainer) {
+        timelineContainer.innerHTML = `
+            <div class="loading-state">
+                <i class="fa-solid fa-circle-notch fa-spin"></i>
+                <p>Carregando atividades...</p>
+            </div>
+        `;
+    }
+    
+    try {
+        const data = await apiRequest(`/api/students/${studentId}/activity?days=${days}`);
+        currentActivityData = data;
+        renderActivityPanel(data, days);
+    } catch (e) {
+        if (timelineContainer) {
+            timelineContainer.innerHTML = `
+                <div class="activity-empty-state">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <h4>Falha ao carregar atividades</h4>
+                    <p>Não foi possível carregar o histórico de atividades deste aluno.</p>
+                </div>
+            `;
+        }
+    }
+}
+
+function renderActivityPanel(data, days) {
+    // 1. Update Summary Stats
+    document.getElementById('stat-active-days').innerText = data.total_active_days;
+    document.getElementById('stat-exercises-done').innerText = data.total_exercises_done;
+    
+    const avg = data.total_active_days > 0
+        ? (data.total_exercises_done / data.total_active_days).toFixed(1)
+        : '0';
+    document.getElementById('stat-avg-exercises').innerText = avg;
+    
+    // 2. Render Calendar Heatmap
+    renderActivityCalendar(data, days);
+    
+    // 3. Render Activity Timeline
+    renderActivityTimeline(data);
+}
+
+function renderActivityCalendar(data, days) {
+    const calendarGrid = document.getElementById('activity-calendar-grid');
+    if (!calendarGrid) return;
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    // Build exercise count map per date
+    const exerciseCountByDate = {};
+    data.activity.forEach(dayGroup => {
+        exerciseCountByDate[dayGroup.date] = dayGroup.exercises.length;
+    });
+    
+    // Find max exercises in a day for scaling
+    const counts = Object.values(exerciseCountByDate);
+    const maxExercises = counts.length > 0 ? Math.max(...counts) : 1;
+    
+    // Generate cells for last N days
+    let cellsHtml = '';
+    for (let i = days - 1; i >= 0; i--) {
+        const cellDate = new Date(today);
+        cellDate.setDate(cellDate.getDate() - i);
+        const dateStr = cellDate.toISOString().split('T')[0];
+        
+        const count = exerciseCountByDate[dateStr] || 0;
+        let level = 0;
+        if (count > 0) {
+            const ratio = count / maxExercises;
+            if (ratio <= 0.25) level = 1;
+            else if (ratio <= 0.5) level = 2;
+            else if (ratio <= 0.75) level = 3;
+            else level = 4;
+        }
+        
+        const isToday = i === 0;
+        const dayNum = cellDate.getDate();
+        const monthShort = cellDate.toLocaleDateString('pt-BR', { month: 'short' });
+        const weekdayShort = cellDate.toLocaleDateString('pt-BR', { weekday: 'short' });
+        
+        const tooltipText = count > 0
+            ? `${count} exercício${count > 1 ? 's' : ''} em ${dayNum} ${monthShort}`
+            : `Sem atividade em ${dayNum} ${monthShort}`;
+        
+        cellsHtml += `
+            <div class="calendar-day-cell level-${level} ${isToday ? 'is-today' : ''}" 
+                 data-date="${dateStr}" 
+                 data-count="${count}" 
+                 data-tooltip="${tooltipText}"
+                 onmouseenter="showCalendarTooltip(event, this)"
+                 onmouseleave="hideCalendarTooltip()">
+            </div>
+        `;
+    }
+    
+    calendarGrid.innerHTML = cellsHtml;
+}
+
+// Calendar tooltip functions
+let calendarTooltipEl = null;
+
+function showCalendarTooltip(event, cell) {
+    if (!calendarTooltipEl) {
+        calendarTooltipEl = document.createElement('div');
+        calendarTooltipEl.className = 'calendar-tooltip';
+        document.body.appendChild(calendarTooltipEl);
+    }
+    
+    const tooltipText = cell.dataset.tooltip;
+    calendarTooltipEl.innerText = tooltipText;
+    calendarTooltipEl.style.display = 'block';
+    
+    const rect = cell.getBoundingClientRect();
+    calendarTooltipEl.style.left = `${rect.left + rect.width / 2}px`;
+    calendarTooltipEl.style.top = `${rect.top}px`;
+}
+
+function hideCalendarTooltip() {
+    if (calendarTooltipEl) {
+        calendarTooltipEl.style.display = 'none';
+    }
+}
+
+function renderActivityTimeline(data) {
+    const timelineContainer = document.getElementById('activity-timeline');
+    if (!timelineContainer) return;
+    
+    if (data.activity.length === 0) {
+        timelineContainer.innerHTML = `
+            <div class="activity-empty-state">
+                <i class="fa-solid fa-bed"></i>
+                <h4>Nenhuma atividade registrada</h4>
+                <p>Este aluno ainda não executou exercícios no período selecionado.</p>
+            </div>
+        `;
+        return;
+    }
+    
+    const todayStr = new Date().toISOString().split('T')[0];
+    
+    timelineContainer.innerHTML = data.activity.map(dayGroup => {
+        const dateObj = new Date(dayGroup.date + 'T12:00:00');
+        const dateFormatted = dateObj.toLocaleDateString('pt-BR', { 
+            day: '2-digit', 
+            month: 'long',
+            year: 'numeric'
+        });
+        const weekday = dateObj.toLocaleDateString('pt-BR', { weekday: 'long' });
+        const weekdayCapitalized = weekday.charAt(0).toUpperCase() + weekday.slice(1);
+        const isToday = dayGroup.date === todayStr;
+        
+        const exercisesHtml = dayGroup.exercises.map(ex => {
+            let timeStr = '';
+            if (ex.completed_at) {
+                const completedDate = new Date(ex.completed_at);
+                timeStr = completedDate.toLocaleTimeString('pt-BR', { 
+                    hour: '2-digit', 
+                    minute: '2-digit' 
+                });
+            }
+            
+            return `
+                <div class="timeline-exercise-item">
+                    <div class="timeline-check-icon">
+                        <i class="fa-solid fa-check"></i>
+                    </div>
+                    <div class="timeline-exercise-info">
+                        <div class="timeline-exercise-name">${ex.exercise_name}</div>
+                        <div class="timeline-exercise-workout">
+                            <i class="fa-solid fa-file-lines"></i> ${ex.workout_title}
+                        </div>
+                    </div>
+                    ${timeStr ? `<span class="timeline-exercise-time">${timeStr}</span>` : ''}
+                </div>
+            `;
+        }).join('');
+        
+        return `
+            <div class="timeline-day-group">
+                <div class="timeline-day-header">
+                    <div class="timeline-day-date">
+                        <div class="date-icon">
+                            <i class="fa-regular fa-calendar-check"></i>
+                        </div>
+                        <div>
+                            <div class="date-text">${dateFormatted}</div>
+                            <div class="date-weekday">${weekdayCapitalized}</div>
+                        </div>
+                    </div>
+                    <span class="timeline-day-count ${isToday ? 'is-today-badge' : ''}">
+                        ${isToday ? '🟢 HOJE — ' : ''}${dayGroup.exercises.length} exercício${dayGroup.exercises.length > 1 ? 's' : ''}
+                    </span>
+                </div>
+                <div class="timeline-exercises-list">
+                    ${exercisesHtml}
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function onActivityPeriodChange(days) {
+    if (state.selectedStudentId) {
+        fetchStudentActivity(state.selectedStudentId, parseInt(days));
     }
 }

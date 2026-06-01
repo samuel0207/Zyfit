@@ -174,6 +174,84 @@
                                     <i class="fa-regular fa-trash-can"></i> Excluir Aluno
                                 </button>
                             </div>
+                            </div>
+
+                        <!-- Painel de Atividade do Aluno -->
+                        <div id="student-activity-panel" class="activity-panel glass-card">
+                            <div class="activity-panel-header">
+                                <div class="activity-title-group">
+                                    <h3><i class="fa-solid fa-chart-line"></i> Atividade do Aluno</h3>
+                                    <p class="activity-subtitle">Datas ativas e exercícios executados</p>
+                                </div>
+                                <div class="activity-period-selector">
+                                    <select id="activity-period-select" onchange="onActivityPeriodChange(this.value)">
+                                        <option value="7">Últimos 7 dias</option>
+                                        <option value="14">Últimos 14 dias</option>
+                                        <option value="30" selected>Últimos 30 dias</option>
+                                        <option value="60">Últimos 60 dias</option>
+                                        <option value="90">Últimos 90 dias</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Activity Summary Stats -->
+                            <div class="activity-stats-row" id="activity-stats-row">
+                                <div class="activity-stat-card">
+                                    <div class="activity-stat-icon" style="background: rgba(16, 185, 129, 0.1); color: var(--success);">
+                                        <i class="fa-solid fa-calendar-check"></i>
+                                    </div>
+                                    <div>
+                                        <span class="activity-stat-value" id="stat-active-days">--</span>
+                                        <span class="activity-stat-label">Dias Ativos</span>
+                                    </div>
+                                </div>
+                                <div class="activity-stat-card">
+                                    <div class="activity-stat-icon" style="background: rgba(139, 92, 246, 0.1); color: var(--primary);">
+                                        <i class="fa-solid fa-dumbbell"></i>
+                                    </div>
+                                    <div>
+                                        <span class="activity-stat-value" id="stat-exercises-done">--</span>
+                                        <span class="activity-stat-label">Exercícios Feitos</span>
+                                    </div>
+                                </div>
+                                <div class="activity-stat-card">
+                                    <div class="activity-stat-icon" style="background: rgba(6, 182, 212, 0.1); color: var(--accent-student);">
+                                        <i class="fa-solid fa-fire"></i>
+                                    </div>
+                                    <div>
+                                        <span class="activity-stat-value" id="stat-avg-exercises">--</span>
+                                        <span class="activity-stat-label">Média / Dia Ativo</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Calendar Heatmap -->
+                            <div class="activity-calendar-section">
+                                <h4><i class="fa-regular fa-calendar-days"></i> Calendário de Atividade</h4>
+                                <div id="activity-calendar-grid" class="activity-calendar-grid">
+                                    <!-- Dynamic calendar heatmap cells -->
+                                </div>
+                                <div class="calendar-legend">
+                                    <span class="legend-label">Menos</span>
+                                    <span class="legend-cell level-0"></span>
+                                    <span class="legend-cell level-1"></span>
+                                    <span class="legend-cell level-2"></span>
+                                    <span class="legend-cell level-3"></span>
+                                    <span class="legend-cell level-4"></span>
+                                    <span class="legend-label">Mais</span>
+                                </div>
+                            </div>
+
+                            <!-- Activity Timeline -->
+                            <div class="activity-timeline-section">
+                                <h4><i class="fa-solid fa-clock-rotate-left"></i> Histórico de Execuções</h4>
+                                <div id="activity-timeline" class="activity-timeline">
+                                    <div class="loading-state">
+                                        <i class="fa-solid fa-circle-notch fa-spin"></i>
+                                        <p>Carregando atividades...</p>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- Fichas de Treino Section -->
