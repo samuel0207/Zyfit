@@ -144,6 +144,20 @@
                                     <p id="view-student-phone" style="display: flex; align-items: center; gap: 6px;"><i class="fa-solid fa-mobile-button" style="color: var(--primary-color);"></i> --</p>
                                     <p id="view-student-pwd-container" style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px; display: flex; align-items: center; gap: 6px;"><i class="fa-solid fa-key"></i> Senha: <span id="view-student-password" style="font-weight: 600; color: var(--text-main);">------</span></p>
                                 </div>
+                                <!-- Data Meta Card -->
+                                <div id="goal-date-card" class="goal-date-card">
+                                    <div class="goal-date-icon">
+                                        <i class="fa-solid fa-bullseye"></i>
+                                    </div>
+                                    <div class="goal-date-info">
+                                        <span class="goal-date-label">DATA META</span>
+                                        <span class="goal-date-value" id="view-goal-date">Não definida</span>
+                                        <span class="goal-date-countdown" id="view-goal-countdown"></span>
+                                    </div>
+                                    <button class="btn-edit-goal-date" id="btn-edit-goal-date" title="Definir data meta" onclick="openGoalDateEditor()">
+                                        <i class="fa-regular fa-pen-to-square"></i>
+                                    </button>
+                                </div>
                             </div>
                             
                             <div class="profile-stats">
@@ -387,6 +401,12 @@
                 <div class="input-group">
                     <label for="student-goals">Objetivos do Aluno</label>
                     <textarea id="student-goals" rows="3" placeholder="Foco em ganho de massa, reabilitação lombar, etc..."></textarea>
+                </div>
+
+                <div class="input-group">
+                    <label for="student-goal-date"><i class="fa-solid fa-bullseye" style="color: var(--primary); margin-right: 4px;"></i> Data Meta de Acompanhamento</label>
+                    <input type="date" id="student-goal-date">
+                    <small class="input-help">Define uma data meta para acompanhar o progresso do aluno (ex: reavaliação, competição, etc).</small>
                 </div>
                 
                 <div class="modal-footer">

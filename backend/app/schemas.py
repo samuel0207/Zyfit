@@ -20,6 +20,7 @@ class UserBase(BaseModel):
     weight: Optional[float] = None
     height: Optional[float] = None
     goals: Optional[str] = None
+    goal_date: Optional[date] = None
 
 class UserCreate(UserBase):
     password: str
@@ -30,6 +31,7 @@ class UserUpdate(BaseModel):
     weight: Optional[float] = None
     height: Optional[float] = None
     goals: Optional[str] = None
+    goal_date: Optional[date] = None
     password: Optional[str] = None
 
 class UserResponse(UserBase):

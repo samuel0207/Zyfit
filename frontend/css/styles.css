@@ -619,6 +619,189 @@ input:focus + .input-icon {
     font-size: 0.95rem;
 }
 
+/* Goal Date Card (Data Meta) */
+.goal-date-card {
+    margin-left: auto;
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.06) 0%, rgba(236, 72, 153, 0.06) 100%);
+    border: 1px solid rgba(139, 92, 246, 0.2);
+    border-radius: var(--radius-md);
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 200px;
+    transition: var(--transition-smooth);
+    position: relative;
+}
+.goal-date-card:hover {
+    border-color: rgba(139, 92, 246, 0.4);
+    box-shadow: 0 4px 16px rgba(139, 92, 246, 0.1);
+}
+.goal-date-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: var(--radius-sm);
+    background: rgba(139, 92, 246, 0.12);
+    color: var(--primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.15rem;
+    flex-shrink: 0;
+}
+.goal-date-card.expired .goal-date-icon {
+    background: rgba(244, 63, 94, 0.12);
+    color: var(--danger);
+}
+.goal-date-card.soon .goal-date-icon {
+    background: rgba(245, 158, 11, 0.12);
+    color: #f59e0b;
+}
+.goal-date-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+    min-width: 0;
+}
+.goal-date-label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+.goal-date-value {
+    font-family: var(--font-heading);
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    white-space: nowrap;
+}
+.goal-date-card.not-set .goal-date-value {
+    color: var(--text-muted);
+    font-size: 0.88rem;
+    font-weight: 500;
+}
+.goal-date-countdown {
+    font-size: 0.72rem;
+    font-weight: 600;
+    border-radius: var(--radius-full);
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 2px;
+}
+.goal-date-countdown.countdown-ok {
+    color: var(--success);
+}
+.goal-date-countdown.countdown-soon {
+    color: #f59e0b;
+}
+.goal-date-countdown.countdown-expired {
+    color: var(--danger);
+}
+.btn-edit-goal-date {
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text-muted);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border-radius: var(--radius-sm);
+    font-size: 0.82rem;
+    flex-shrink: 0;
+}
+.btn-edit-goal-date:hover {
+    background: var(--primary);
+    color: #fff;
+    border-color: var(--primary);
+}
+
+/* Goal Date Quick Editor */
+.goal-date-editor-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(6, 4, 13, 0.5);
+    backdrop-filter: blur(6px);
+    z-index: 110;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 0.2s ease;
+}
+.goal-date-editor {
+    background: var(--bg-surface-solid);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--radius-lg);
+    padding: 28px;
+    width: 100%;
+    max-width: 360px;
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+    animation: scaleIn 0.25s ease;
+}
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+@keyframes scaleIn {
+    from { transform: scale(0.9); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+}
+.goal-date-editor h4 {
+    font-size: 1.1rem;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.goal-date-editor h4 i {
+    color: var(--primary);
+}
+.goal-date-editor input[type="date"] {
+    width: 100%;
+    padding: 12px 16px;
+    padding-left: 16px;
+    margin-bottom: 16px;
+}
+.goal-date-editor-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+}
+.goal-date-editor-actions button {
+    padding: 8px 18px;
+    font-size: 0.85rem;
+}
+.btn-remove-goal {
+    background: transparent;
+    color: var(--danger);
+    border: 1px solid rgba(244, 63, 94, 0.2);
+    margin-right: auto;
+    font-size: 0.8rem;
+    padding: 8px 14px;
+}
+.btn-remove-goal:hover {
+    background: rgba(244, 63, 94, 0.1);
+    border-color: var(--danger);
+}
+
+/* Responsive Goal Date Card */
+@media (max-width: 768px) {
+    .goal-date-card {
+        margin-left: 0;
+        margin-top: 12px;
+        min-width: auto;
+        width: 100%;
+    }
+    .profile-main-info {
+        flex-wrap: wrap;
+    }
+}
+
 .profile-stats {
     display: grid;
     grid-template-columns: repeat(3, 1fr);

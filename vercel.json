@@ -8,12 +8,24 @@
     {
       "src": "frontend/**",
       "use": "@vercel/static"
+    },
+    {
+      "src": "mobile/**",
+      "use": "@vercel/static"
     }
   ],
   "routes": [
     {
       "src": "/api/(.*)",
       "dest": "backend/app/main.py"
+    },
+    {
+      "src": "/mobile/(.*\\.(css|js|png|json))",
+      "dest": "mobile/$1"
+    },
+    {
+      "src": "/mobile/?(.*)",
+      "dest": "mobile/index.html"
     },
     {
       "src": "/css/(.*)",

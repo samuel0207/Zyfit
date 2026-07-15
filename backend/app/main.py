@@ -50,6 +50,11 @@ def safe_migrate():
             if 'password' not in existing_user_cols:
                 with engine.begin() as conn:
                     conn.execute(text("ALTER TABLE users ADD COLUMN password VARCHAR(100);"))
+            
+            # Add goal_date column if it doesn't exist
+            if 'goal_date' not in existing_user_cols:
+                with engine.begin() as conn:
+                    conn.execute(text("ALTER TABLE users ADD COLUMN goal_date DATE;"))
         
         # Widen exercises.name column from VARCHAR(100) to VARCHAR(500)
         if inspector.has_table('exercises'):
@@ -208,7 +213,8 @@ def create_student(
         role="student",
         weight=student_in.weight,
         height=student_in.height,
-        goals=student_in.goals
+        goals=student_in.goals,
+        goal_date=student_in.goal_date
     )
     
     db.add(student)
@@ -729,6 +735,11 @@ def get_student_activity(
 
 from fastapi.staticfiles import StaticFiles
 import os
+
+# Mount Mobile PWA at /mobile (must be before the catch-all "/" route)
+mobile_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../mobile"))
+if os.path.exists(mobile_dir):
+    app.mount("/mobile", StaticFiles(directory=mobile_dir, html=True), name="mobile")
 
 # Mount Frontend Static Files at root "/"
 frontend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../frontend"))

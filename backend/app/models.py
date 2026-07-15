@@ -21,6 +21,7 @@ class User(Base):
     weight = Column(Float, nullable=True)
     height = Column(Float, nullable=True)
     goals = Column(Text, nullable=True)
+    goal_date = Column(Date, nullable=True)  # Target/meta date for student tracking
     
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
