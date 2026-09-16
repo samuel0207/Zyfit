@@ -80,6 +80,8 @@ class WorkoutBase(BaseModel):
     title: str
     description: Optional[str] = None
     days_of_week: Optional[str] = None
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
 
 class WorkoutCreate(WorkoutBase):
     student_id: str
@@ -88,10 +90,14 @@ class WorkoutUpdate(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
     days_of_week: Optional[str] = None
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
 
 class WorkoutResponse(WorkoutBase):
     id: str
     student_id: str
+    status: Optional[str] = None  # 'active', 'expiring_today', 'expiring_soon', 'expired', 'no_deadline'
+    days_remaining: Optional[int] = None
     created_at: datetime
     updated_at: datetime
     exercises: List[ExerciseResponse] = []
@@ -114,6 +120,8 @@ class ExerciseStudentResponse(ExerciseBase):
 class WorkoutStudentResponse(WorkoutBase):
     id: str
     student_id: str
+    status: Optional[str] = None  # 'active', 'expiring_today', 'expiring_soon', 'expired', 'no_deadline'
+    days_remaining: Optional[int] = None
     created_at: datetime
     updated_at: datetime
     exercises: List[ExerciseStudentResponse] = []
@@ -121,6 +129,29 @@ class WorkoutStudentResponse(WorkoutBase):
     class Config:
         from_attributes = True
         orm_mode = True
+
+
+# ----------------- NOTIFICATION SCHEMAS -----------------
+class NotificationBase(BaseModel):
+    title: str
+    message: str
+    type: str = "workout_deadline"
+
+class NotificationResponse(NotificationBase):
+    id: str
+    user_id: str
+    workout_id: Optional[str] = None
+    is_read: bool
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+        orm_mode = True
+
+class NotificationSummary(BaseModel):
+    total_unread: int
+    notifications: List[NotificationResponse]
+
 
 
 # ----------------- EXERCISE COMPLETION SCHEMAS -----------------

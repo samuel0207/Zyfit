@@ -12,7 +12,9 @@ const state = {
     user: null,
     workouts: [],
     activeWorkoutId: null,
-    selectedDay: null
+    selectedDay: null,
+    notifications: [],
+    unreadNotificationsCount: 0
 };
 
 // ==========================================================================
@@ -53,6 +55,8 @@ function showDashboard() {
     document.getElementById('header-greeting').textContent =
         `Olá, ${state.user.name.split(' ')[0]}`;
     loadWorkouts();
+    loadMobileNotifications();
+    requestNotificationPermission();
 }
 
 // ==========================================================================
@@ -220,6 +224,44 @@ function renderDashboard() {
 
     let html = '';
 
+    // Alert Banner if any workout expired or expiring today
+    const expiredW = state.workouts.filter(w => w.status === 'expired');
+    const expiringTodayW = state.workouts.filter(w => w.status === 'expiring_today');
+    const expiringSoonW = state.workouts.filter(w => w.status === 'expiring_soon');
+
+    if (expiredW.length > 0) {
+        const ew = expiredW[0];
+        const daysAgo = Math.abs(ew.days_remaining || 0);
+        html += `
+        <div class="mobile-deadline-banner mobile-banner-expired" onclick="openMobileNotifications()">
+            <div class="mobile-banner-icon"><i class="fa-solid fa-triangle-exclamation" style="color:#ef4444"></i></div>
+            <div class="mobile-banner-text">
+                <h4>Ficha de Treino Vencida!</h4>
+                <p>O prazo da sua ficha <strong>"${ew.title}"</strong> encerrou há ${daysAgo} dia(s). Toque para ver detalhes e avisar seu treinador.</p>
+            </div>
+        </div>`;
+    } else if (expiringTodayW.length > 0) {
+        const ew = expiringTodayW[0];
+        html += `
+        <div class="mobile-deadline-banner mobile-banner-expiring-today" onclick="openMobileNotifications()">
+            <div class="mobile-banner-icon"><i class="fa-solid fa-bell" style="color:#f97316"></i></div>
+            <div class="mobile-banner-text">
+                <h4>Treino Vence Hoje!</h4>
+                <p>A vigência da sua ficha <strong>"${ew.title}"</strong> termina hoje. Prepare-se para sua próxima periodização!</p>
+            </div>
+        </div>`;
+    } else if (expiringSoonW.length > 0) {
+        const ew = expiringSoonW[0];
+        html += `
+        <div class="mobile-deadline-banner mobile-banner-expiring-soon">
+            <div class="mobile-banner-icon"><i class="fa-solid fa-clock" style="color:#eab308"></i></div>
+            <div class="mobile-banner-text">
+                <h4>Treino Vence em Breve</h4>
+                <p>Faltam apenas <strong>${ew.days_remaining} dia(s)</strong> para o término da ficha <strong>"${ew.title}"</strong>.</p>
+            </div>
+        </div>`;
+    }
+
     // 1) Welcome
     html += `
     <div class="welcome-card glass-card">
@@ -314,11 +356,32 @@ function renderDashboard() {
             <p>Aguarde a professora adicionar exercícios.</p>
         </div>`;
     } else {
+        let deadlineBadge = '';
+        if (activeW.start_date || activeW.end_date) {
+            const endFmt = activeW.end_date ? new Date(activeW.end_date + 'T00:00:00').toLocaleDateString('pt-BR') : 'Sem fim';
+            let pillClass = 'pill-active';
+            let pillText = `Até ${endFmt}`;
+            if (activeW.status === 'expired') {
+                pillClass = 'pill-expired';
+                pillText = `Vencido`;
+            } else if (activeW.status === 'expiring_today') {
+                pillClass = 'pill-expiring-today';
+                pillText = `Vence Hoje!`;
+            } else if (activeW.status === 'expiring_soon') {
+                pillClass = 'pill-expiring-soon';
+                pillText = `Vence em ${activeW.days_remaining}d`;
+            }
+            deadlineBadge = `<span class="workout-deadline-pill ${pillClass}"><i class="fa-regular fa-clock"></i> ${pillText}</span>`;
+        }
+
         html += `
         <div class="exercises-section">
-            <div class="section-title">
-                <i class="fa-solid fa-list-check"></i> Exercícios
-                <span class="exercise-count">${done}/${total}</span>
+            <div class="section-title" style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <i class="fa-solid fa-list-check"></i> Exercícios
+                    <span class="exercise-count">${done}/${total}</span>
+                </div>
+                ${deadlineBadge}
             </div>
             ${activeW.exercises.map((ex, idx) => `
             <div class="exercise-card glass-card ${ex.completed_today ? 'completed' : ''}" id="ex-${ex.id}">
@@ -530,4 +593,131 @@ function bindEvents() {
     });
 
     setupPullToRefresh();
+}
+
+// ==========================================================================
+// MOBILE NOTIFICATIONS
+// ==========================================================================
+async function loadMobileNotifications() {
+    try {
+        const data = await api('/api/notifications');
+        state.notifications = data.notifications || [];
+        state.unreadNotificationsCount = data.total_unread || 0;
+        updateMobileBadge();
+
+        // Se houver notificação urgente não lida, dispara notificação nativa
+        const urgent = state.notifications.filter(n => !n.is_read && (n.type === 'workout_deadline' || n.type === 'workout_expired'));
+        if (urgent.length > 0) {
+            triggerMobilePushNotification(urgent[0].title, urgent[0].message);
+        }
+    } catch (err) {
+        console.warn('Erro ao carregar notificações mobile:', err);
+    }
+}
+
+function updateMobileBadge() {
+    const badge = document.getElementById('mobile-notification-badge');
+    if (!badge) return;
+    const count = state.unreadNotificationsCount;
+    if (count > 0) {
+        badge.textContent = count > 99 ? '99+' : count;
+        badge.classList.remove('hidden');
+    } else {
+        badge.classList.add('hidden');
+    }
+}
+
+function requestNotificationPermission() {
+    if ('Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission().catch(() => {});
+    }
+}
+
+function triggerMobilePushNotification(title, body) {
+    if (!('Notification' in window)) return;
+    if (Notification.permission === 'granted') {
+        try {
+            new Notification(title, {
+                body,
+                icon: '/mobile/icons/icon-192.png'
+            });
+        } catch (e) {
+            if (navigator.serviceWorker && navigator.serviceWorker.ready) {
+                navigator.serviceWorker.ready.then(reg => {
+                    reg.showNotification(title, {
+                        body,
+                        icon: '/mobile/icons/icon-192.png'
+                    });
+                }).catch(() => {});
+            }
+        }
+    }
+}
+
+function openMobileNotifications() {
+    renderMobileNotifications();
+    const modal = document.getElementById('notifications-modal');
+    if (modal) modal.classList.add('active');
+}
+
+function closeMobileNotifications() {
+    const modal = document.getElementById('notifications-modal');
+    if (modal) modal.classList.remove('active');
+}
+
+function renderMobileNotifications() {
+    const container = document.getElementById('mobile-notifications-list');
+    if (!container) return;
+
+    if (!state.notifications || state.notifications.length === 0) {
+        container.innerHTML = `
+            <div style="text-align: center; padding: 30px 10px; color: var(--text-muted);">
+                <i class="fa-regular fa-bell-slash" style="font-size: 2rem; margin-bottom: 10px; display: block; opacity: 0.3;"></i>
+                <p style="font-size: 0.9rem;">Nenhuma notificação encontrada.</p>
+                <small>Avisos de término de treinos aparecerão aqui.</small>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = state.notifications.map(n => {
+        const timeFmt = new Date(n.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+        const icon = n.type === 'workout_expired' ? 'fa-triangle-exclamation' : (n.type === 'workout_deadline' ? 'fa-bell' : 'fa-clock');
+        const iconColor = n.type === 'workout_expired' ? '#ef4444' : (n.type === 'workout_deadline' ? '#f97316' : '#eab308');
+
+        return `
+            <div class="mobile-notif-card ${n.is_read ? '' : 'unread'}" onclick="markMobileNotificationRead('${n.id}')">
+                <i class="fa-solid ${icon}" style="color: ${iconColor}; font-size: 1.1rem; margin-top: 2px;"></i>
+                <div style="flex: 1;">
+                    <div class="mobile-notif-title">${n.title}</div>
+                    <div class="mobile-notif-msg">${n.message}</div>
+                    <div class="mobile-notif-time"><i class="fa-regular fa-clock"></i> ${timeFmt}</div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+async function markMobileNotificationRead(id) {
+    try {
+        await api(`/api/notifications/${id}/read`, { method: 'PUT' });
+        const notif = state.notifications.find(n => n.id === id);
+        if (notif) notif.is_read = true;
+        state.unreadNotificationsCount = Math.max(0, state.unreadNotificationsCount - 1);
+        updateMobileBadge();
+        renderMobileNotifications();
+    } catch (err) {}
+}
+
+async function markAllMobileNotificationsRead() {
+    try {
+        await api('/api/notifications/read-all', { method: 'PUT' });
+        state.notifications.forEach(n => n.is_read = true);
+        state.unreadNotificationsCount = 0;
+        updateMobileBadge();
+        renderMobileNotifications();
+        toast('Todas marcadas como lidas', 'success');
+    } catch (err) {
+        toast('Erro ao atualizar notificações', 'error');
+    }
 }

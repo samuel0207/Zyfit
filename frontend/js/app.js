@@ -15,7 +15,10 @@ let state = {
     catalogFilterGroup: '', // Active muscle group filter
     studentWorkouts: [], // Current student portal workouts
     activeStudentWorkoutId: null, // Active workout tab in student portal
-    selectedTimelineDay: null // Active timeline day in student portal
+    selectedTimelineDay: null, // Active timeline day in student portal
+    notifications: [], // Student in-app notifications
+    unreadNotificationsCount: 0,
+    expiringWorkouts: [] // Admin monitoring
 };
 
 // ==========================================================================
@@ -57,9 +60,11 @@ function routeUser(role) {
     if (role === 'admin') {
         showView('teacher-dashboard');
         fetchStudents();
+        fetchExpiringWorkoutsAdmin();
     } else if (role === 'student') {
         showView('student-portal');
         initStudentPortal();
+        fetchStudentNotifications();
     }
 }
 
@@ -302,6 +307,9 @@ async function selectStudent(studentId) {
     } else {
         imcElement.innerText = '--';
     }
+
+    // Render Goal Date
+    renderStudentGoalDate(student);
     
     // Fetch and render Workouts/Treinos
     fetchWorkouts(studentId);
@@ -312,6 +320,153 @@ async function selectStudent(studentId) {
     fetchStudentActivity(studentId, selectedDays);
 }
 
+// Helper to render Goal Date in student profile view
+function renderStudentGoalDate(student) {
+    const card = document.getElementById('goal-date-card');
+    const valueEl = document.getElementById('view-goal-date');
+    const countdownEl = document.getElementById('view-goal-countdown');
+    if (!card || !valueEl || !countdownEl) return;
+
+    card.classList.remove('not-set', 'expired', 'soon', 'ok');
+    countdownEl.classList.remove('countdown-ok', 'countdown-soon', 'countdown-expired');
+
+    if (!student || !student.goal_date) {
+        card.classList.add('not-set');
+        valueEl.innerText = 'Não definida';
+        countdownEl.innerText = 'Clique para definir meta';
+        return;
+    }
+
+    const rawDate = student.goal_date.includes('T') ? student.goal_date.split('T')[0] : student.goal_date;
+    const parts = rawDate.split('-');
+    if (parts.length !== 3) {
+        card.classList.add('not-set');
+        valueEl.innerText = 'Não definida';
+        countdownEl.innerText = 'Clique para definir meta';
+        return;
+    }
+
+    const year = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1;
+    const day = parseInt(parts[2], 10);
+    const targetDate = new Date(year, month, day);
+
+    const formattedDate = `${String(day).padStart(2, '0')}/${String(month + 1).padStart(2, '0')}/${year}`;
+    valueEl.innerText = formattedDate;
+
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const diffMs = targetDate.getTime() - today.getTime();
+    const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffDays < 0) {
+        const daysAgo = Math.abs(diffDays);
+        card.classList.add('expired');
+        countdownEl.classList.add('countdown-expired');
+        countdownEl.innerHTML = `<i class="fa-solid fa-clock-rotate-left"></i> Expirou há ${daysAgo} dia${daysAgo === 1 ? '' : 's'}`;
+    } else if (diffDays === 0) {
+        card.classList.add('soon');
+        countdownEl.classList.add('countdown-soon');
+        countdownEl.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> Vence hoje!`;
+    } else if (diffDays <= 7) {
+        card.classList.add('soon');
+        countdownEl.classList.add('countdown-soon');
+        countdownEl.innerHTML = `<i class="fa-regular fa-clock"></i> Faltam ${diffDays} dia${diffDays === 1 ? '' : 's'}`;
+    } else {
+        card.classList.add('ok');
+        countdownEl.classList.add('countdown-ok');
+        countdownEl.innerHTML = `<i class="fa-solid fa-bullseye"></i> Faltam ${diffDays} dias`;
+    }
+}
+
+function openGoalDateEditor() {
+    if (!state.selectedStudentId) {
+        showToast('Nenhum aluno selecionado.', 'warning');
+        return;
+    }
+    const student = state.students.find(s => s.id === state.selectedStudentId);
+    if (!student) {
+        showToast('Aluno não encontrado.', 'error');
+        return;
+    }
+
+    const overlay = document.getElementById('goal-date-editor-overlay');
+    const input = document.getElementById('quick-goal-date-input');
+    const removeBtn = document.getElementById('btn-remove-quick-goal');
+
+    if (input) {
+        input.value = student.goal_date ? (student.goal_date.includes('T') ? student.goal_date.split('T')[0] : student.goal_date) : '';
+    }
+
+    if (removeBtn) {
+        removeBtn.style.display = student.goal_date ? 'inline-flex' : 'none';
+    }
+
+    if (overlay) {
+        overlay.classList.remove('hidden');
+    }
+}
+
+function closeGoalDateEditor() {
+    const overlay = document.getElementById('goal-date-editor-overlay');
+    if (overlay) {
+        overlay.classList.add('hidden');
+    }
+}
+
+async function saveGoalDate() {
+    if (!state.selectedStudentId) return;
+    const input = document.getElementById('quick-goal-date-input');
+    if (!input || !input.value) {
+        showToast('Selecione uma data para a meta.', 'error');
+        return;
+    }
+
+    try {
+        const updated = await apiRequest(`/api/students/${state.selectedStudentId}`, {
+            method: 'PUT',
+            body: JSON.stringify({ goal_date: input.value })
+        });
+
+        const student = state.students.find(s => s.id === state.selectedStudentId);
+        if (student) {
+            student.goal_date = updated.goal_date || input.value;
+            renderStudentGoalDate(student);
+        }
+        closeGoalDateEditor();
+        showToast('Data meta definida com sucesso!', 'success');
+    } catch (e) {
+        showToast(e.message || 'Erro ao salvar data meta.', 'error');
+    }
+}
+
+async function removeGoalDate() {
+    if (!state.selectedStudentId) return;
+    try {
+        await apiRequest(`/api/students/${state.selectedStudentId}`, {
+            method: 'PUT',
+            body: JSON.stringify({ goal_date: null })
+        });
+
+        const student = state.students.find(s => s.id === state.selectedStudentId);
+        if (student) {
+            student.goal_date = null;
+            renderStudentGoalDate(student);
+        }
+        closeGoalDateEditor();
+        showToast('Data meta removida com sucesso!', 'info');
+    } catch (e) {
+        showToast(e.message || 'Erro ao remover data meta.', 'error');
+    }
+}
+
+// Expose functions globally for inline onclick handlers
+window.openGoalDateEditor = openGoalDateEditor;
+window.closeGoalDateEditor = closeGoalDateEditor;
+window.saveGoalDate = saveGoalDate;
+window.removeGoalDate = removeGoalDate;
+window.renderStudentGoalDate = renderStudentGoalDate;
+
 async function handleStudentSubmit(event) {
     event.preventDefault();
     const id = document.getElementById('student-form-id').value;
@@ -321,17 +476,23 @@ async function handleStudentSubmit(event) {
     const weight = parseFloat(document.getElementById('student-weight').value) || null;
     const height = parseFloat(document.getElementById('student-height').value) || null;
     const goals = document.getElementById('student-goals').value || null;
+    const goalDateInput = document.getElementById('student-goal-date');
+    const goal_date = goalDateInput ? (goalDateInput.value || null) : null;
     
-    const payload = { name, phone, weight, height, goals };
+    const payload = { name, phone, weight, height, goals, goal_date };
     
     try {
         if (id) {
             // Edit existing student
             if (password) payload.password = password;
-            await apiRequest(`/api/students/${id}`, {
+            const updated = await apiRequest(`/api/students/${id}`, {
                 method: 'PUT',
                 body: JSON.stringify(payload)
             });
+            const sIdx = state.students.findIndex(s => s.id === id);
+            if (sIdx !== -1 && updated) {
+                state.students[sIdx] = { ...state.students[sIdx], ...updated };
+            }
             showToast('Perfil do aluno atualizado com sucesso!', 'success');
         } else {
             // Create new student
@@ -349,7 +510,13 @@ async function handleStudentSubmit(event) {
         }
         
         closeModal('modal-student');
-        fetchStudents();
+        await fetchStudents();
+        if (state.selectedStudentId) {
+            const currentSelected = state.students.find(s => s.id === state.selectedStudentId);
+            if (currentSelected) {
+                renderStudentGoalDate(currentSelected);
+            }
+        }
     } catch (e) {
         showToast(e.message || 'Erro ao salvar aluno.', 'error');
     }
@@ -455,6 +622,51 @@ function renderWorkoutsList(workoutsList) {
                  <i class="fa-regular fa-calendar-days"></i> ${workout.days_of_week}
                </div>`
             : '';
+
+        // Dates and deadline badge
+        let datesHtml = '';
+        if (workout.start_date || workout.end_date) {
+            const startFmt = workout.start_date ? new Date(workout.start_date + 'T00:00:00').toLocaleDateString('pt-BR') : 'Início imediato';
+            const endFmt = workout.end_date ? new Date(workout.end_date + 'T00:00:00').toLocaleDateString('pt-BR') : 'Sem prazo final';
+            
+            let statusBadge = '';
+            if (workout.status === 'expired') {
+                const daysAgo = Math.abs(workout.days_remaining || 0);
+                statusBadge = `<span class="workout-status-badge badge-status-expired"><i class="fa-solid fa-triangle-exclamation"></i> Vencido há ${daysAgo} dia(s)</span>`;
+            } else if (workout.status === 'expiring_today') {
+                statusBadge = `<span class="workout-status-badge badge-status-expiring-today"><i class="fa-solid fa-bell"></i> Vence Hoje!</span>`;
+            } else if (workout.status === 'expiring_soon') {
+                statusBadge = `<span class="workout-status-badge badge-status-expiring-soon"><i class="fa-solid fa-clock"></i> Vence em ${workout.days_remaining} dia(s)</span>`;
+            } else if (workout.status === 'active') {
+                statusBadge = `<span class="workout-status-badge badge-status-active"><i class="fa-solid fa-circle-check"></i> Válido (${workout.days_remaining} dias restantes)</span>`;
+            }
+
+            // WhatsApp direct action
+            let waAlertBtn = '';
+            const currentStudent = state.students.find(s => s.id === state.selectedStudentId);
+            if (currentStudent && currentStudent.phone && (workout.status === 'expired' || workout.status === 'expiring_today' || workout.status === 'expiring_soon')) {
+                let cleanPhone = currentStudent.phone.replace(/\D/g, '');
+                if (cleanPhone && !cleanPhone.startsWith('55') && (cleanPhone.length === 10 || cleanPhone.length === 11)) {
+                    cleanPhone = '55' + cleanPhone;
+                }
+                const msg = workout.status === 'expired'
+                    ? `Olá, ${currentStudent.name}! Notei que o prazo da sua ficha "${workout.title}" encerrou em ${endFmt}. Vamos agendar sua reavaliação para atualizarmos seu treino?`
+                    : `Olá, ${currentStudent.name}! O prazo da sua ficha "${workout.title}" termina ${workout.status === 'expiring_today' ? 'hoje' : 'em breve'} (${endFmt}). Vamos combinar o próximo ciclo de treino?`;
+                waAlertBtn = `
+                    <a href="https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}" target="_blank" class="btn-whatsapp-action" style="font-size: 0.75rem; padding: 4px 10px; border-radius: 6px;" title="Avisar aluno no WhatsApp">
+                        <i class="fa-brands fa-whatsapp"></i> Avisar no WhatsApp
+                    </a>
+                `;
+            }
+
+            datesHtml = `
+                <div style="margin-top: 8px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 0.8rem; color: var(--text-secondary);">
+                    <span><i class="fa-regular fa-calendar-days" style="color: var(--primary-color);"></i> <strong>Início:</strong> ${startFmt} &bull; <strong>Término:</strong> ${endFmt}</span>
+                    ${statusBadge}
+                    ${waAlertBtn}
+                </div>
+            `;
+        }
             
         return `
             <div class="workout-sheet-card glass-card">
@@ -463,6 +675,7 @@ function renderWorkoutsList(workoutsList) {
                         <h4>${workout.title}</h4>
                         <p>${workout.description || 'Sem descrição cadastrada.'}</p>
                         ${daysHtml}
+                        ${datesHtml}
                     </div>
                     <div class="workout-sheet-actions">
                         <button class="btn-icon-sm" onclick="openEditWorkout('${workout.id}')" title="Editar ficha de treino">
@@ -491,6 +704,8 @@ async function handleWorkoutSubmit(event) {
     const id = document.getElementById('workout-form-id').value;
     const title = document.getElementById('workout-title').value;
     const description = document.getElementById('workout-description').value || null;
+    const start_date = document.getElementById('workout-start-date').value || null;
+    const end_date = document.getElementById('workout-end-date').value || null;
     
     const checkedDays = Array.from(document.querySelectorAll('input[name="workout-days"]:checked'))
         .map(input => input.value)
@@ -501,7 +716,13 @@ async function handleWorkoutSubmit(event) {
             // Edit workout header
             await apiRequest(`/api/workouts/${id}`, {
                 method: 'PUT',
-                body: JSON.stringify({ title, description, days_of_week: checkedDays || null })
+                body: JSON.stringify({ 
+                    title, 
+                    description, 
+                    days_of_week: checkedDays || null,
+                    start_date,
+                    end_date
+                })
             });
             showToast('Ficha de treino atualizada com sucesso!', 'success');
         } else {
@@ -512,7 +733,9 @@ async function handleWorkoutSubmit(event) {
                     student_id: state.selectedStudentId,
                     title,
                     description,
-                    days_of_week: checkedDays || null
+                    days_of_week: checkedDays || null,
+                    start_date,
+                    end_date
                 })
             });
             showToast('Nova ficha de treino criada com sucesso!', 'success');
@@ -520,6 +743,7 @@ async function handleWorkoutSubmit(event) {
         
         closeModal('modal-workout');
         fetchWorkouts(state.selectedStudentId);
+        fetchExpiringWorkoutsAdmin(); // Atualiza monitor de prazos em tempo real
     } catch (e) {
         showToast(e.message || 'Erro ao salvar ficha de treino.', 'error');
     }
@@ -633,6 +857,8 @@ document.getElementById('btn-add-student-modal').addEventListener('click', () =>
     document.getElementById('student-form-id').value = '';
     document.getElementById('student-password-container').style.display = 'block';
     document.getElementById('student-password').required = true;
+    const goalDateInput = document.getElementById('student-goal-date');
+    if (goalDateInput) goalDateInput.value = '';
     openModal('modal-student');
 });
 
@@ -650,6 +876,10 @@ document.getElementById('btn-edit-student').addEventListener('click', () => {
     document.getElementById('student-weight').value = student.weight || '';
     document.getElementById('student-height').value = student.height || '';
     document.getElementById('student-goals').value = student.goals || '';
+    const goalDateInput = document.getElementById('student-goal-date');
+    if (goalDateInput) {
+        goalDateInput.value = student.goal_date ? (student.goal_date.includes('T') ? student.goal_date.split('T')[0] : student.goal_date) : '';
+    }
     openModal('modal-student');
 });
 
@@ -680,6 +910,8 @@ document.getElementById('btn-add-workout-modal').addEventListener('click', () =>
     document.getElementById('workout-form-id').value = '';
     document.getElementById('workout-title').value = '';
     document.getElementById('workout-description').value = '';
+    document.getElementById('workout-start-date').value = new Date().toISOString().split('T')[0];
+    document.getElementById('workout-end-date').value = '';
     setupWorkoutDays('');
     openModal('modal-workout');
 });
@@ -692,6 +924,8 @@ function openEditWorkout(workoutId) {
     document.getElementById('workout-form-id').value = workout.id;
     document.getElementById('workout-title').value = workout.title;
     document.getElementById('workout-description').value = workout.description || '';
+    document.getElementById('workout-start-date').value = workout.start_date || '';
+    document.getElementById('workout-end-date').value = workout.end_date || '';
     setupWorkoutDays(workout.days_of_week || '');
     openModal('modal-workout');
 }
@@ -819,6 +1053,14 @@ function setupEventListeners() {
 async function initStudentPortal() {
     const studentMain = document.querySelector('.student-main');
     
+    // Solicita permissão para notificações do navegador se suportado
+    if ("Notification" in window && Notification.permission === "default") {
+        Notification.requestPermission().catch(() => {});
+    }
+
+    // Carrega notificações do aluno
+    fetchStudentNotifications();
+
     try {
         const workouts = await apiRequest('/api/student-portal/my-workouts');
         state.studentWorkouts = workouts;
@@ -920,6 +1162,16 @@ function renderStudentPortal() {
                         <span class="stat-label">Físico</span>
                         <span class="stat-value" style="font-size: 1.05rem;">${imcHtml}</span>
                     </div>
+                    ${state.user.goal_date ? (() => {
+                        const raw = state.user.goal_date.includes('T') ? state.user.goal_date.split('T')[0] : state.user.goal_date;
+                        const p = raw.split('-');
+                        const dt = p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : raw;
+                        return `
+                        <div class="stat-box" style="padding: 8px 16px; background: rgba(255, 68, 68, 0.08); border: 1px solid rgba(255, 68, 68, 0.25);">
+                            <span class="stat-label" style="color: #ff8888;"><i class="fa-solid fa-bullseye"></i> Meta</span>
+                            <span class="stat-value" style="font-size: 1.05rem; color: #fff;">${dt}</span>
+                        </div>`;
+                    })() : ''}
                 </div>
             </div>
             
@@ -984,6 +1236,85 @@ function renderStudentPortal() {
         </div>
     `;
 
+    // Calculate alert banner for expired or expiring workouts
+    let alertBannerHtml = '';
+    const expiredWorkouts = (state.studentWorkouts || []).filter(w => w.status === 'expired');
+    const expiringTodayWorkouts = (state.studentWorkouts || []).filter(w => w.status === 'expiring_today');
+    const expiringSoonWorkouts = (state.studentWorkouts || []).filter(w => w.status === 'expiring_soon');
+
+    if (expiredWorkouts.length > 0) {
+        const w = expiredWorkouts[0];
+        const daysAgo = Math.abs(w.days_remaining || 0);
+        alertBannerHtml = `
+            <div class="workout-deadline-alert-banner alert-banner-expired">
+                <div style="display: flex; align-items: center; gap: 14px;">
+                    <i class="fa-solid fa-triangle-exclamation alert-banner-icon" style="color: #ef4444;"></i>
+                    <div class="alert-banner-text">
+                        <h4>Atenção: Ficha de Treino Vencida!</h4>
+                        <p>O prazo do seu treino <strong>"${w.title}"</strong> encerrou há ${daysAgo} dia(s). Entre em contato com seu professor/treinador para agendar sua reavaliação física e montar seu novo treino!</p>
+                    </div>
+                </div>
+                <button class="btn-primary" onclick="openNotificationsModal()" style="padding: 8px 16px; font-size: 0.85rem; background: #ef4444; border-color: #dc2626; cursor: pointer;">
+                    Ver Detalhes
+                </button>
+            </div>
+        `;
+    } else if (expiringTodayWorkouts.length > 0) {
+        const w = expiringTodayWorkouts[0];
+        alertBannerHtml = `
+            <div class="workout-deadline-alert-banner alert-banner-expiring-today">
+                <div style="display: flex; align-items: center; gap: 14px;">
+                    <i class="fa-solid fa-bell alert-banner-icon" style="color: #f97316;"></i>
+                    <div class="alert-banner-text">
+                        <h4>O Prazo do seu Treino Encerra Hoje!</h4>
+                        <p>Hoje é o último dia da ficha <strong>"${w.title}"</strong>. Comunique seu treinador para preparar sua próxima fase de treinos!</p>
+                    </div>
+                </div>
+                <button class="btn-primary" onclick="openNotificationsModal()" style="padding: 8px 16px; font-size: 0.85rem; background: #f97316; border-color: #ea580c; cursor: pointer;">
+                    Ver Notificação
+                </button>
+            </div>
+        `;
+    } else if (expiringSoonWorkouts.length > 0) {
+        const w = expiringSoonWorkouts[0];
+        alertBannerHtml = `
+            <div class="workout-deadline-alert-banner alert-banner-expiring-soon">
+                <div style="display: flex; align-items: center; gap: 14px;">
+                    <i class="fa-solid fa-clock alert-banner-icon" style="color: #eab308;"></i>
+                    <div class="alert-banner-text">
+                        <h4>Seu Treino Vence em Breve</h4>
+                        <p>Faltam apenas <strong>${w.days_remaining} dia(s)</strong> para o término da ficha <strong>"${w.title}"</strong>. Foco na reta final!</p>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    // Active workout deadline card
+    let activeWorkoutDeadlineInfo = '';
+    if (activeWorkout && (activeWorkout.start_date || activeWorkout.end_date)) {
+        const startFmt = activeWorkout.start_date ? new Date(activeWorkout.start_date + 'T00:00:00').toLocaleDateString('pt-BR') : 'Início imediato';
+        const endFmt = activeWorkout.end_date ? new Date(activeWorkout.end_date + 'T00:00:00').toLocaleDateString('pt-BR') : 'Sem prazo final';
+        let badge = '';
+        if (activeWorkout.status === 'expired') {
+            badge = `<span class="workout-status-badge badge-status-expired"><i class="fa-solid fa-triangle-exclamation"></i> Vencido há ${Math.abs(activeWorkout.days_remaining || 0)} dia(s)</span>`;
+        } else if (activeWorkout.status === 'expiring_today') {
+            badge = `<span class="workout-status-badge badge-status-expiring-today"><i class="fa-solid fa-bell"></i> Vence Hoje!</span>`;
+        } else if (activeWorkout.status === 'expiring_soon') {
+            badge = `<span class="workout-status-badge badge-status-expiring-soon"><i class="fa-solid fa-clock"></i> Vence em ${activeWorkout.days_remaining} dia(s)</span>`;
+        } else if (activeWorkout.status === 'active') {
+            badge = `<span class="workout-status-badge badge-status-active"><i class="fa-solid fa-circle-check"></i> Válido (${activeWorkout.days_remaining} dias restantes)</span>`;
+        }
+        activeWorkoutDeadlineInfo = `
+            <div class="glass-card" style="margin-top: 15px; padding: 12px 18px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; font-size: 0.85rem;">
+                <div style="color: var(--text-secondary);">
+                    <i class="fa-regular fa-calendar-check" style="color: var(--primary-color);"></i> <strong>Vigência:</strong> ${startFmt} até ${endFmt}
+                </div>
+                ${badge}
+            </div>
+        `;
+    }
+
     // Exercises HTML
     let exercisesHtml = '';
     if (!activeWorkout) {
@@ -1017,6 +1348,7 @@ function renderStudentPortal() {
         `;
     } else {
         exercisesHtml = `
+            ${activeWorkoutDeadlineInfo}
             <div class="student-exercises-list" style="margin-top: 20px;">
                 ${activeWorkout.exercises.map((ex, idx) => `
                     <div class="student-exercise-card glass-card ${ex.completed_today ? 'completed' : ''}">
@@ -1049,7 +1381,7 @@ function renderStudentPortal() {
         `;
     }
     
-    studentMain.innerHTML = welcomeHtml + timelineHtml + exercisesHtml;
+    studentMain.innerHTML = alertBannerHtml + welcomeHtml + timelineHtml + exercisesHtml;
 }
 
 function selectTimelineDay(dayName) {
@@ -1204,6 +1536,8 @@ function switchAdminTab(tabId) {
     // Load catalog data when switching to catalog tab
     if (tabId === 'tab-catalog') {
         fetchCatalogExercises();
+    } else if (tabId === 'tab-deadlines') {
+        fetchExpiringWorkoutsAdmin();
     }
 }
 
@@ -1629,3 +1963,310 @@ function onActivityPeriodChange(days) {
         fetchStudentActivity(state.selectedStudentId, parseInt(days));
     }
 }
+
+
+// ==========================================================================
+// PREENCHIMENTO RÁPIDO DE DATAS (MODAL DE TREINO)
+// ==========================================================================
+function setWorkoutDuration(days) {
+    let startInput = document.getElementById('workout-start-date');
+    let endInput = document.getElementById('workout-end-date');
+    
+    let startDate = startInput && startInput.value ? new Date(startInput.value + 'T00:00:00') : new Date();
+    if (startInput && !startInput.value) {
+        startInput.value = startDate.toISOString().split('T')[0];
+    }
+    
+    let endDate = new Date(startDate.getTime());
+    endDate.setDate(endDate.getDate() + days);
+    if (endInput) {
+        endInput.value = endDate.toISOString().split('T')[0];
+    }
+}
+
+function clearWorkoutDates() {
+    const startInput = document.getElementById('workout-start-date');
+    const endInput = document.getElementById('workout-end-date');
+    if (startInput) startInput.value = '';
+    if (endInput) endInput.value = '';
+}
+
+
+// ==========================================================================
+// CENTRAL DE NOTIFICAÇÕES (PORTAL DO ALUNO)
+// ==========================================================================
+async function fetchStudentNotifications() {
+    try {
+        const data = await apiRequest('/api/notifications');
+        state.notifications = data.notifications || [];
+        state.unreadNotificationsCount = data.total_unread || 0;
+        updateNotificationBadge();
+        
+        // Se houver notificação não lida de expiração ou término hoje, dispara notificação nativa do navegador
+        const unreadDeadlines = state.notifications.filter(n => !n.is_read && (n.type === 'workout_deadline' || n.type === 'workout_expired'));
+        if (unreadDeadlines.length > 0) {
+            const first = unreadDeadlines[0];
+            triggerBrowserNotification(first.title, first.message);
+        }
+    } catch (e) {
+        console.warn('Falha ao obter notificações:', e);
+    }
+}
+
+function updateNotificationBadge() {
+    const badge = document.getElementById('notification-badge');
+    if (!badge) return;
+    const count = state.unreadNotificationsCount;
+    if (count > 0) {
+        badge.innerText = count > 99 ? '99+' : count;
+        badge.classList.remove('hidden');
+    } else {
+        badge.classList.add('hidden');
+    }
+}
+
+function triggerBrowserNotification(title, body) {
+    if (!("Notification" in window)) return;
+    if (Notification.permission === "granted") {
+        try {
+            new Notification(title, {
+                body: body,
+                icon: '/mobile/icons/icon-192.png'
+            });
+        } catch (e) {
+            if (navigator.serviceWorker && navigator.serviceWorker.ready) {
+                navigator.serviceWorker.ready.then(reg => {
+                    reg.showNotification(title, {
+                        body: body,
+                        icon: '/mobile/icons/icon-192.png'
+                    });
+                }).catch(() => {});
+            }
+        }
+    } else if (Notification.permission === "default") {
+        Notification.requestPermission().then(permission => {
+            if (permission === "granted") {
+                triggerBrowserNotification(title, body);
+            }
+        }).catch(() => {});
+    }
+}
+
+function openNotificationsModal() {
+    renderNotificationsList();
+    openModal('modal-notifications');
+}
+
+function renderNotificationsList() {
+    const container = document.getElementById('notifications-list');
+    if (!container) return;
+    
+    if (!state.notifications || state.notifications.length === 0) {
+        container.innerHTML = `
+            <div class="notification-empty-state">
+                <i class="fa-regular fa-bell-slash" style="font-size: 2.2rem; color: rgba(255,255,255,0.1); margin-bottom: 12px;"></i>
+                <p>Nenhuma notificação no momento.</p>
+                <small style="color: var(--text-muted);">Quando o prazo de algum treino estiver vencendo ou encerrar, avisaremos aqui!</small>
+            </div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = state.notifications.map(n => {
+        const timeFmt = new Date(n.created_at).toLocaleString('pt-BR', { 
+            day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' 
+        });
+        const icon = n.type === 'workout_expired' 
+            ? 'fa-triangle-exclamation' 
+            : (n.type === 'workout_deadline' ? 'fa-bell' : 'fa-clock');
+        const iconColor = n.type === 'workout_expired' 
+            ? '#ef4444' 
+            : (n.type === 'workout_deadline' ? '#f97316' : '#eab308');
+
+        return `
+            <div class="notification-card ${n.is_read ? '' : 'unread'}" id="notif-card-${n.id}">
+                <div style="font-size: 1.2rem; color: ${iconColor}; margin-top: 2px;">
+                    <i class="fa-solid ${icon}"></i>
+                </div>
+                <div class="notification-card-content">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
+                        <h4 class="notification-card-title">${n.title}</h4>
+                        ${!n.is_read ? `
+                            <button class="btn-icon-sm" style="width: 26px; height: 26px; font-size: 0.75rem;" title="Marcar como lida" onclick="markNotificationRead('${n.id}')">
+                                <i class="fa-solid fa-check"></i>
+                            </button>
+                        ` : ''}
+                    </div>
+                    <p class="notification-card-msg">${n.message}</p>
+                    <span class="notification-card-time"><i class="fa-regular fa-clock"></i> ${timeFmt}</span>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+async function markNotificationRead(id) {
+    try {
+        await apiRequest(`/api/notifications/${id}/read`, { method: 'PUT' });
+        const notif = state.notifications.find(n => n.id === id);
+        if (notif) notif.is_read = true;
+        state.unreadNotificationsCount = Math.max(0, state.unreadNotificationsCount - 1);
+        updateNotificationBadge();
+        renderNotificationsList();
+    } catch (e) {
+        showToast('Erro ao atualizar notificação', 'error');
+    }
+}
+
+async function markAllNotificationsRead() {
+    try {
+        await apiRequest('/api/notifications/read-all', { method: 'PUT' });
+        state.notifications.forEach(n => n.is_read = true);
+        state.unreadNotificationsCount = 0;
+        updateNotificationBadge();
+        renderNotificationsList();
+        showToast('Todas as notificações foram marcadas como lidas!', 'success');
+    } catch (e) {
+        showToast('Erro ao atualizar notificações', 'error');
+    }
+}
+
+
+// ==========================================================================
+// MONITOR DE PRAZOS DOS TREINOS (ADMIN)
+// ==========================================================================
+async function fetchExpiringWorkoutsAdmin() {
+    const listContainer = document.getElementById('deadlines-list');
+    const badge = document.getElementById('admin-deadlines-badge');
+    const filterTypeSelect = document.getElementById('deadlines-filter-type');
+    const filterType = filterTypeSelect ? filterTypeSelect.value : 'all';
+    const filterSelect = document.getElementById('deadlines-filter-days');
+    const filterDays = filterSelect ? filterSelect.value : 30;
+
+    try {
+        const expiring = await apiRequest(`/api/admin/expiring-workouts?days=${filterDays}&item_type=${filterType}`);
+        state.expiringWorkouts = expiring;
+
+        if (badge) {
+            const urgentCount = expiring.filter(x => x.status === 'expired' || x.status === 'expiring_today').length;
+            if (urgentCount > 0) {
+                badge.innerText = urgentCount;
+                badge.classList.remove('hidden');
+            } else {
+                badge.classList.add('hidden');
+            }
+        }
+
+        if (!listContainer) return;
+
+        if (expiring.length === 0) {
+            listContainer.innerHTML = `
+                <div class="empty-state glass-card" style="padding: 50px 20px; text-align: center;">
+                    <i class="fa-solid fa-circle-check" style="font-size: 3rem; color: #22c55e; margin-bottom: 16px;"></i>
+                    <h4>Nenhum prazo vencido ou prestes a vencer!</h4>
+                    <p style="color: var(--text-secondary); max-width: 450px; margin: 0 auto; line-height: 1.6;">
+                        Todos os alunos com fichas ou metas com prazo estão em dia no período selecionado.
+                    </p>
+                </div>
+            `;
+            return;
+        }
+
+        listContainer.innerHTML = `
+            <div class="deadlines-grid">
+                ${expiring.map(item => {
+                    const isGoal = item.type === 'goal';
+                    const startFmt = item.start_date ? new Date(item.start_date + 'T00:00:00').toLocaleDateString('pt-BR') : 'Início imediato';
+                    const endFmt = item.end_date ? new Date(item.end_date + 'T00:00:00').toLocaleDateString('pt-BR') : '--';
+                    
+                    let cardClass = 'deadline-card-expired';
+                    let badgeClass = 'badge-status-expired';
+                    let badgeLabel = '';
+                    let badgeIcon = 'fa-triangle-exclamation';
+
+                    if (item.status === 'expired') {
+                        const daysAgo = Math.abs(item.days_remaining || 0);
+                        badgeLabel = `Vencido há ${daysAgo} dia(s)`;
+                        cardClass = 'deadline-card-expired';
+                        badgeClass = 'badge-status-expired';
+                    } else if (item.status === 'expiring_today') {
+                        badgeLabel = 'Vence Hoje!';
+                        cardClass = 'deadline-card-expiring-today';
+                        badgeClass = 'badge-status-expiring-today';
+                        badgeIcon = 'fa-bell';
+                    } else {
+                        badgeLabel = `Vence em ${item.days_remaining} dia(s)`;
+                        cardClass = 'deadline-card-expiring-soon';
+                        badgeClass = 'badge-status-expiring-soon';
+                        badgeIcon = 'fa-clock';
+                    }
+
+                    const typeBadge = isGoal 
+                        ? `<span style="font-size: 0.72rem; padding: 2px 8px; border-radius: 6px; background: rgba(236, 72, 153, 0.15); color: #f472b6; border: 1px solid rgba(236, 72, 153, 0.3); font-weight: 600;"><i class="fa-solid fa-bullseye"></i> Data Meta</span>`
+                        : `<span style="font-size: 0.72rem; padding: 2px 8px; border-radius: 6px; background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3); font-weight: 600;"><i class="fa-solid fa-file-lines"></i> Ficha de Treino</span>`;
+
+                    const titleHtml = isGoal
+                        ? `<div style="font-size: 0.95rem; color: #f3f4f6; font-weight: 600; margin-bottom: 6px;"><i class="fa-solid fa-bullseye" style="color: var(--primary-color);"></i> ${item.workout_title}</div>`
+                        : `<div style="font-size: 0.95rem; color: #f3f4f6; font-weight: 600; margin-bottom: 6px;"><i class="fa-solid fa-dumbbell" style="color: var(--primary-color);"></i> ${item.workout_title}</div>`;
+
+                    const periodHtml = isGoal
+                        ? `<span><i class="fa-regular fa-calendar-check"></i> <strong>Data da Meta:</strong> ${endFmt}</span>`
+                        : `<span><i class="fa-regular fa-calendar-days"></i> <strong>Período:</strong> ${startFmt} até ${endFmt}</span>`;
+
+                    const actionButton = isGoal
+                        ? `<button class="btn-secondary" style="font-size: 0.8rem; padding: 6px 12px;" onclick="selectStudentAndOpenWorkouts('${item.student_id}')"><i class="fa-solid fa-user"></i> Ver Aluno</button>`
+                        : `<button class="btn-secondary" style="font-size: 0.8rem; padding: 6px 12px;" onclick="selectStudentAndOpenWorkouts('${item.student_id}')"><i class="fa-solid fa-pen-to-square"></i> Ver Fichas</button>`;
+
+                    return `
+                        <div class="deadline-item-card glass-card ${cardClass}">
+                            <div>
+                                <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 8px;">
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <h4 style="font-size: 1.05rem; font-weight: 700; color: #fff;">${item.student_name}</h4>
+                                        ${typeBadge}
+                                    </div>
+                                    <span class="workout-status-badge ${badgeClass}">
+                                        <i class="fa-solid ${badgeIcon}"></i> ${badgeLabel}
+                                    </span>
+                                </div>
+                                
+                                ${titleHtml}
+                                
+                                <div style="font-size: 0.8rem; color: var(--text-secondary); display: flex; flex-direction: column; gap: 4px;">
+                                    ${periodHtml}
+                                    <span><i class="fa-solid fa-phone"></i> <strong>Telefone:</strong> ${item.student_phone || 'Sem telefone'}</span>
+                                </div>
+                            </div>
+                            
+                            <div style="display: flex; gap: 10px; align-items: center; justify-content: space-between; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 12px; margin-top: 8px;">
+                                ${actionButton}
+                                
+                                ${item.whatsapp_link ? `
+                                    <a href="${item.whatsapp_link}" target="_blank" class="btn-whatsapp-action" title="Abrir conversa no WhatsApp com mensagem pronta">
+                                        <i class="fa-brands fa-whatsapp" style="font-size: 1rem;"></i> Notificar no WhatsApp
+                                    </a>
+                                ` : `
+                                    <span style="font-size: 0.75rem; color: var(--text-muted);">Sem WhatsApp</span>
+                                `}
+                            </div>
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+        `;
+    } catch (e) {
+        if (listContainer) {
+            listContainer.innerHTML = `<p class="empty-state">Erro ao carregar monitoramento de prazos.</p>`;
+        }
+    }
+}
+
+function selectStudentAndOpenWorkouts(studentId) {
+    switchAdminTab('tab-students');
+    selectStudent(studentId);
+}
+
+// Global scope bindings
+window.fetchExpiringWorkoutsAdmin = fetchExpiringWorkoutsAdmin;
+window.selectStudentAndOpenWorkouts = selectStudentAndOpenWorkouts;
+

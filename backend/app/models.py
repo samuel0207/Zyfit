@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime, date
-from sqlalchemy import Column, String, Integer, Float, ForeignKey, DateTime, Date, Text, UniqueConstraint
+from sqlalchemy import Column, String, Integer, Float, ForeignKey, DateTime, Date, Text, UniqueConstraint, Boolean
 from sqlalchemy.orm import relationship
 from app.database import Base
 
@@ -29,6 +29,7 @@ class User(Base):
     # Relationships
     workouts = relationship("Workout", back_populates="student", cascade="all, delete-orphan")
     completions = relationship("ExerciseCompletion", back_populates="student", cascade="all, delete-orphan")
+    notifications = relationship("Notification", back_populates="user", cascade="all, delete-orphan")
 
 
 class Workout(Base):
@@ -39,12 +40,15 @@ class Workout(Base):
     title = Column(String(100), nullable=False)
     description = Column(String(255), nullable=True)
     days_of_week = Column(String(150), nullable=True)  # Comma-separated days like "Segunda, Quarta"
+    start_date = Column(Date, nullable=True)  # Início do período da ficha
+    end_date = Column(Date, nullable=True)    # Término / vencimento da ficha
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
     student = relationship("User", back_populates="workouts")
     exercises = relationship("Exercise", back_populates="workout", cascade="all, delete-orphan", order_by="Exercise.order_index")
+    notifications = relationship("Notification", back_populates="workout", cascade="all, delete-orphan")
 
 
 class Exercise(Base):
@@ -94,3 +98,22 @@ class ExerciseCatalog(Base):
     video_url = Column(String(512), nullable=True)
     description = Column(Text, nullable=True)  # Optional instructions/notes
     created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class Notification(Base):
+    """Notificações do sistema para alunos e professores."""
+    __tablename__ = "notifications"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    user_id = Column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    workout_id = Column(String(36), ForeignKey("workouts.id", ondelete="CASCADE"), nullable=True, index=True)
+    title = Column(String(150), nullable=False)
+    message = Column(Text, nullable=False)
+    type = Column(String(50), default="workout_deadline")  # 'workout_deadline', 'workout_expiring_soon', 'workout_expired', 'info'
+    is_read = Column(Boolean, default=False, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    # Relationships
+    user = relationship("User", back_populates="notifications")
+    workout = relationship("Workout", back_populates="notifications")
+

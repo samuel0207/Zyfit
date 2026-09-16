@@ -93,9 +93,15 @@
                 </div>
                 <span class="header-badge">ALUNO</span>
             </div>
-            <button id="btn-logout-mobile" class="btn-logout" title="Sair" aria-label="Sair do sistema">
-                <i class="fa-solid fa-power-off"></i>
-            </button>
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <button id="btn-notifications-mobile" class="btn-icon-mobile" title="Notificações" aria-label="Notificações" onclick="openMobileNotifications()">
+                    <i class="fa-regular fa-bell"></i>
+                    <span id="mobile-notification-badge" class="mobile-notification-badge hidden">0</span>
+                </button>
+                <button id="btn-logout-mobile" class="btn-logout" title="Sair" aria-label="Sair do sistema">
+                    <i class="fa-solid fa-power-off"></i>
+                </button>
+            </div>
         </header>
 
         <!-- Pull to refresh indicator -->
@@ -117,6 +123,31 @@
             <div class="skeleton skeleton-card" style="height:90px"></div>
         </main>
     </section>
+
+    <!-- ========================================== -->
+    <!-- NOTIFICATIONS MODAL (MOBILE)               -->
+    <!-- ========================================== -->
+    <div id="notifications-modal" class="modal-overlay">
+        <div class="modal-box" style="max-height: 80vh; display: flex; flex-direction: column;">
+            <div class="modal-header">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <i class="fa-regular fa-bell" style="color: var(--primary-color);"></i>
+                    <h3 style="margin: 0; font-size: 1.1rem;">Notificações</h3>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <button id="btn-mobile-mark-all" class="btn-mobile-read-all" onclick="markAllMobileNotificationsRead()">
+                        <i class="fa-solid fa-check-double"></i> Ler todas
+                    </button>
+                    <button class="btn-close-modal" onclick="closeMobileNotifications()" aria-label="Fechar">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+            </div>
+            <div id="mobile-notifications-list" class="mobile-notifications-list">
+                <!-- Preenchido dinamicamente via JS -->
+            </div>
+        </div>
+    </div>
 
     <!-- ========================================== -->
     <!-- VIDEO MODAL                                -->

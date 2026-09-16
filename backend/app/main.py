@@ -9,7 +9,7 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from typing import List, Optional
 
 from app.config import settings
@@ -33,6 +33,12 @@ def safe_migrate():
             if 'days_of_week' not in existing_cols:
                 with engine.begin() as conn:
                     conn.execute(text("ALTER TABLE workouts ADD COLUMN days_of_week VARCHAR(150);"))
+            if 'start_date' not in existing_cols:
+                with engine.begin() as conn:
+                    conn.execute(text("ALTER TABLE workouts ADD COLUMN start_date DATE;"))
+            if 'end_date' not in existing_cols:
+                with engine.begin() as conn:
+                    conn.execute(text("ALTER TABLE workouts ADD COLUMN end_date DATE;"))
         
         # Check if 'users' table exists before migrating
         if inspector.has_table('users'):
@@ -280,6 +286,165 @@ def delete_student(
 # 3. GESTÃO DE TREINOS (FICHAS) (Apenas Admin)
 # -------------------------------------------------------------
 
+def compute_workout_status(workout: models.Workout):
+    """Calcula o status do prazo da ficha e os dias restantes."""
+    if not workout.end_date:
+        return "no_deadline", None
+    
+    today = date.today()
+    days_left = (workout.end_date - today).days
+    
+    if days_left < 0:
+        return "expired", days_left
+    elif days_left == 0:
+        return "expiring_today", 0
+    elif days_left <= 3:
+        return "expiring_soon", days_left
+    else:
+        return "active", days_left
+
+def attach_workout_status(w: models.Workout):
+    """Anexa status e days_remaining ao objeto do workout para serialização Pydantic."""
+    s, d = compute_workout_status(w)
+    setattr(w, "status", s)
+    setattr(w, "days_remaining", d)
+    return w
+
+
+def check_and_create_workout_notifications(db: Session, user_id: str):
+    """
+    Verifica se o aluno possui treinos com prazo encerrado ou encerrando hoje/em breve,
+    e gera notificações no sistema automaticamente (evitando duplicatas).
+    """
+    workouts = db.query(models.Workout).filter(
+        models.Workout.student_id == user_id,
+        models.Workout.end_date != None
+    ).all()
+
+    created_any = False
+    for w in workouts:
+        status_str, days_left = compute_workout_status(w)
+        end_date_fmt = w.end_date.strftime("%d/%m/%Y")
+
+        if status_str == "expired":
+            # Checa se já existe notificação de expiração para este treino
+            existing = db.query(models.Notification).filter(
+                models.Notification.user_id == user_id,
+                models.Notification.workout_id == w.id,
+                models.Notification.type == "workout_expired"
+            ).first()
+            if not existing:
+                notif = models.Notification(
+                    user_id=user_id,
+                    workout_id=w.id,
+                    title="⚠️ Ficha de Treino Vencida!",
+                    message=f"O prazo da sua ficha \"{w.title}\" encerrou em {end_date_fmt}. Fale com seu professor para agendar sua reavaliação e renovar seu treino.",
+                    type="workout_expired",
+                    is_read=False
+                )
+                db.add(notif)
+                created_any = True
+
+        elif status_str == "expiring_today":
+            existing = db.query(models.Notification).filter(
+                models.Notification.user_id == user_id,
+                models.Notification.workout_id == w.id,
+                models.Notification.type == "workout_deadline"
+            ).first()
+            if not existing:
+                notif = models.Notification(
+                    user_id=user_id,
+                    workout_id=w.id,
+                    title="🔔 Prazo do Treino Termina Hoje!",
+                    message=f"Atenção: A validade da sua ficha \"{w.title}\" encerra hoje ({end_date_fmt}). Avise seu treinador para preparar sua próxima fase!",
+                    type="workout_deadline",
+                    is_read=False
+                )
+                db.add(notif)
+                created_any = True
+
+        elif status_str == "expiring_soon" and days_left is not None and days_left > 0:
+            existing = db.query(models.Notification).filter(
+                models.Notification.user_id == user_id,
+                models.Notification.workout_id == w.id,
+                models.Notification.type == "workout_expiring_soon"
+            ).first()
+            if not existing:
+                notif = models.Notification(
+                    user_id=user_id,
+                    workout_id=w.id,
+                    title="⏳ Seu Treino Vence em Breve",
+                    message=f"Faltam {days_left} dia(s) para o término da ficha \"{w.title}\" (vence em {end_date_fmt}). Foco nos treinos!",
+                    type="workout_expiring_soon",
+                    is_read=False
+                )
+                db.add(notif)
+                created_any = True
+
+    # Checa também prazos da Data Meta do Aluno
+    student_user = db.query(models.User).filter(models.User.id == user_id).first()
+    if student_user and student_user.goal_date:
+        today = date.today()
+        g_diff = (student_user.goal_date - today).days
+        g_date_fmt = student_user.goal_date.strftime("%d/%m/%Y")
+        
+        if g_diff < 0:
+            existing = db.query(models.Notification).filter(
+                models.Notification.user_id == user_id,
+                models.Notification.type == "goal_date_expired"
+            ).first()
+            if not existing:
+                notif = models.Notification(
+                    user_id=user_id,
+                    workout_id=None,
+                    title="🎯 Data Meta Vencida!",
+                    message=f"Sua data meta de acompanhamento encerrou em {g_date_fmt}. Fale com seu treinador para agendar sua reavaliação!",
+                    type="goal_date_expired",
+                    is_read=False
+                )
+                db.add(notif)
+                created_any = True
+        elif g_diff == 0:
+            existing = db.query(models.Notification).filter(
+                models.Notification.user_id == user_id,
+                models.Notification.type == "goal_date_today"
+            ).first()
+            if not existing:
+                notif = models.Notification(
+                    user_id=user_id,
+                    workout_id=None,
+                    title="🎯 Sua Meta é Hoje!",
+                    message=f"Hoje ({g_date_fmt}) é o dia da sua data meta / reavaliação! Fale com seu professor para registrar seus resultados.",
+                    type="goal_date_today",
+                    is_read=False
+                )
+                db.add(notif)
+                created_any = True
+        elif g_diff <= 3 and g_diff > 0:
+            existing = db.query(models.Notification).filter(
+                models.Notification.user_id == user_id,
+                models.Notification.type == "goal_date_soon"
+            ).first()
+            if not existing:
+                notif = models.Notification(
+                    user_id=user_id,
+                    workout_id=None,
+                    title="🎯 Sua Meta Está Próxima!",
+                    message=f"Faltam {g_diff} dia(s) para sua data meta ({g_date_fmt}). Mantenha o foco!",
+                    type="goal_date_soon",
+                    is_read=False
+                )
+                db.add(notif)
+                created_any = True
+
+    if created_any:
+        try:
+            db.commit()
+        except Exception as e:
+            db.rollback()
+            print(f"[Notification Error] Erro ao salvar notificações: {e}")
+
+
 @app.post("/api/workouts", response_model=schemas.WorkoutResponse, status_code=status.HTTP_201_CREATED)
 def create_workout(
     workout_in: schemas.WorkoutCreate,
@@ -295,12 +460,14 @@ def create_workout(
         student_id=workout_in.student_id,
         title=workout_in.title,
         description=workout_in.description,
-        days_of_week=workout_in.days_of_week
+        days_of_week=workout_in.days_of_week,
+        start_date=workout_in.start_date,
+        end_date=workout_in.end_date
     )
     db.add(workout)
     db.commit()
     db.refresh(workout)
-    return workout
+    return attach_workout_status(workout)
 
 
 @app.get("/api/workouts/student/{student_id}", response_model=List[schemas.WorkoutResponse])
@@ -314,6 +481,8 @@ def get_workouts_by_student(
         raise HTTPException(status_code=403, detail="Sem permissão para visualizar estes treinos.")
         
     workouts = db.query(models.Workout).filter(models.Workout.student_id == student_id).all()
+    for w in workouts:
+        attach_workout_status(w)
     return workouts
 
 
@@ -331,7 +500,7 @@ def get_workout_by_id(
     if current_user.role != "admin" and current_user.id != workout.student_id:
         raise HTTPException(status_code=403, detail="Acesso negado.")
         
-    return workout
+    return attach_workout_status(workout)
 
 
 @app.put("/api/workouts/{workout_id}", response_model=schemas.WorkoutResponse)
@@ -351,7 +520,7 @@ def update_workout(
         
     db.commit()
     db.refresh(workout)
-    return workout
+    return attach_workout_status(workout)
 
 
 @app.delete("/api/workouts/{workout_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -471,6 +640,9 @@ def get_my_workouts_portal(
         # If Admin views portals, let them view all student's portals or throw (here we restrict to current student context)
         raise HTTPException(status_code=403, detail="O portal é exclusivo para contas de alunos.")
 
+    # Verifica e gera notificações de prazos automaticamente
+    check_and_create_workout_notifications(db, student.id)
+
     # Fetch workouts
     workouts = db.query(models.Workout).filter(models.Workout.student_id == student.id).all()
     
@@ -503,6 +675,7 @@ def get_my_workouts_portal(
                 )
             )
             
+        status_str, days_left = compute_workout_status(w)
         workouts_portal.append(
             schemas.WorkoutStudentResponse(
                 id=w.id,
@@ -510,6 +683,10 @@ def get_my_workouts_portal(
                 title=w.title,
                 description=w.description,
                 days_of_week=w.days_of_week,
+                start_date=w.start_date,
+                end_date=w.end_date,
+                status=status_str,
+                days_remaining=days_left,
                 created_at=w.created_at,
                 updated_at=w.updated_at,
                 exercises=exercises_portal
@@ -731,6 +908,179 @@ def get_student_activity(
         "active_dates": active_dates,
         "activity": sorted_activity
     }
+
+
+# -------------------------------------------------------------
+# 8. SISTEMA DE NOTIFICAÇÕES E ALERTAS DE PRAZO
+# -------------------------------------------------------------
+
+@app.get("/api/notifications", response_model=schemas.NotificationSummary)
+def get_user_notifications(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    """Retorna notificações do usuário e executa verificação de vencimento para alunos."""
+    if current_user.role == "student":
+        check_and_create_workout_notifications(db, current_user.id)
+
+    notifications = (
+        db.query(models.Notification)
+        .filter(models.Notification.user_id == current_user.id)
+        .order_by(models.Notification.created_at.desc())
+        .limit(50)
+        .all()
+    )
+    total_unread = sum(1 for n in notifications if not n.is_read)
+    
+    return schemas.NotificationSummary(
+        total_unread=total_unread,
+        notifications=notifications
+    )
+
+
+@app.put("/api/notifications/{notification_id}/read")
+def mark_notification_read(
+    notification_id: str,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    """Marca uma notificação específica como lida."""
+    notif = db.query(models.Notification).filter(
+        models.Notification.id == notification_id,
+        models.Notification.user_id == current_user.id
+    ).first()
+    if not notif:
+        raise HTTPException(status_code=404, detail="Notificação não encontrada.")
+        
+    notif.is_read = True
+    db.commit()
+    return {"message": "Notificação marcada como lida."}
+
+
+@app.put("/api/notifications/read-all")
+def mark_all_notifications_read(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    """Marca todas as notificações do usuário como lidas."""
+    db.query(models.Notification).filter(
+        models.Notification.user_id == current_user.id,
+        models.Notification.is_read == False
+    ).update({"is_read": True})
+    db.commit()
+    return {"message": "Todas as notificações foram marcadas como lidas."}
+
+
+@app.get("/api/admin/expiring-workouts")
+def get_expiring_workouts_admin(
+    days: int = Query(default=30, ge=1, le=180, description="Dias para considerar próximo do vencimento"),
+    item_type: str = Query(default="all", description="Filtro de tipo: 'all', 'workouts', ou 'goals'"),
+    db: Session = Depends(get_db),
+    admin: models.User = Depends(auth.get_admin_user)
+):
+    """
+    Retorna todos os treinos e/ou datas metas de alunos que estão vencidos ou que vencem nos próximos N dias,
+    com dados do aluno e link pronto para WhatsApp.
+    """
+    import urllib.parse
+
+    today = date.today()
+    limit_date = today + timedelta(days=days)
+
+    result = []
+
+    # 1. Prazos das Fichas de Treino
+    if item_type in ("all", "workouts"):
+        workouts = (
+            db.query(models.Workout)
+            .filter(models.Workout.end_date != None, models.Workout.end_date <= limit_date)
+            .all()
+        )
+
+        for w in workouts:
+            student = w.student
+            if not student:
+                continue
+            status_str, days_left = compute_workout_status(w)
+            end_date_fmt = w.end_date.strftime("%d/%m/%Y") if w.end_date else ""
+            
+            if status_str == "expired":
+                days_ago = abs(days_left) if days_left is not None else 0
+                wa_text = f"Olá, {student.name}! Tudo bem? Notei que o prazo da sua ficha \"{w.title}\" encerrou em {end_date_fmt} (há {days_ago} dias). Vamos agendar sua reavaliação para montarmos um novo treino?"
+            elif status_str == "expiring_today":
+                wa_text = f"Olá, {student.name}! A validade da sua ficha \"{w.title}\" termina hoje ({end_date_fmt}). Vamos combinar os próximos passos da sua periodização?"
+            else:
+                wa_text = f"Olá, {student.name}! Sua ficha de treino \"{w.title}\" vence em breve (dia {end_date_fmt}, restam {days_left} dias). Passando para nos organizarmos para o próximo ciclo de treinos!"
+
+            clean_phone = "".join(filter(str.isdigit, student.phone or ""))
+            if clean_phone and not clean_phone.startswith("55") and len(clean_phone) in (10, 11):
+                clean_phone = f"55{clean_phone}"
+            wa_link = f"https://wa.me/{clean_phone}?text={urllib.parse.quote(wa_text)}" if clean_phone else None
+
+            result.append({
+                "type": "workout",
+                "workout_id": w.id,
+                "workout_title": w.title,
+                "student_id": student.id,
+                "student_name": student.name,
+                "student_phone": student.phone,
+                "start_date": w.start_date.isoformat() if w.start_date else None,
+                "end_date": w.end_date.isoformat() if w.end_date else None,
+                "status": status_str,
+                "days_remaining": days_left,
+                "whatsapp_link": wa_link,
+                "suggested_message": wa_text
+            })
+
+    # 2. Datas Metas de Acompanhamento dos Alunos
+    if item_type in ("all", "goals"):
+        students_with_goals = (
+            db.query(models.User)
+            .filter(
+                models.User.role == "student",
+                models.User.goal_date != None,
+                models.User.goal_date <= limit_date
+            )
+            .all()
+        )
+
+        for s in students_with_goals:
+            goal_diff = (s.goal_date - today).days
+            goal_date_fmt = s.goal_date.strftime("%d/%m/%Y")
+
+            if goal_diff < 0:
+                status_str = "expired"
+                days_ago = abs(goal_diff)
+                wa_text = f"Olá, {s.name}! Tudo bem? A sua data meta / reavaliação agendada para {goal_date_fmt} encerrou há {days_ago} dias. Vamos agendar seu novo acompanhamento e avaliar sua evolução?"
+            elif goal_diff == 0:
+                status_str = "expiring_today"
+                wa_text = f"Olá, {s.name}! Hoje ({goal_date_fmt}) é o dia da sua data meta / reavaliação física! Passando para combinarmos nosso encontro e avaliarmos seus resultados."
+            else:
+                status_str = "expiring_soon"
+                wa_text = f"Olá, {s.name}! Falta pouco para sua data meta / reavaliação (dia {goal_date_fmt}, restam {goal_diff} dias). Vamos com foco total nessa reta final!"
+
+            clean_phone = "".join(filter(str.isdigit, s.phone or ""))
+            if clean_phone and not clean_phone.startswith("55") and len(clean_phone) in (10, 11):
+                clean_phone = f"55{clean_phone}"
+            wa_link = f"https://wa.me/{clean_phone}?text={urllib.parse.quote(wa_text)}" if clean_phone else None
+
+            result.append({
+                "type": "goal",
+                "workout_id": None,
+                "workout_title": "Data Meta de Acompanhamento / Reavaliação",
+                "student_id": s.id,
+                "student_name": s.name,
+                "student_phone": s.phone,
+                "start_date": None,
+                "end_date": s.goal_date.isoformat(),
+                "status": status_str,
+                "days_remaining": goal_diff,
+                "whatsapp_link": wa_link,
+                "suggested_message": wa_text
+            })
+
+    result.sort(key=lambda x: (x["days_remaining"] if x["days_remaining"] is not None else 999))
+    return result
 
 
 from fastapi.staticfiles import StaticFiles

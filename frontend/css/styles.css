@@ -733,6 +733,9 @@ input:focus + .input-icon {
     justify-content: center;
     animation: fadeIn 0.2s ease;
 }
+.goal-date-editor-overlay.hidden {
+    display: none !important;
+}
 .goal-date-editor {
     background: var(--bg-surface-solid);
     border: 1px solid rgba(255, 255, 255, 0.08);
@@ -2199,4 +2202,288 @@ select option {
         gap: 8px;
     }
 }
+
+/* ==========================================================================
+   SISTEMA DE PRAZOS DOS TREINOS & CENTRAL DE NOTIFICAÇÕES
+   ========================================================================== */
+
+/* Botão do Sino de Notificações */
+.btn-notifications {
+    position: relative;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 1.1rem;
+    transition: all 0.2s ease;
+}
+.btn-notifications:hover {
+    background: rgba(139, 92, 246, 0.15);
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+    transform: translateY(-2px);
+}
+.notification-badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    background: #ef4444;
+    color: #fff;
+    font-size: 0.7rem;
+    font-weight: 700;
+    min-width: 18px;
+    height: 18px;
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 4px;
+    border: 2px solid var(--bg-surface-solid);
+    animation: pulse 2s infinite;
+}
+.notification-badge.hidden {
+    display: none;
+}
+
+/* Mini contador nas abas do Admin */
+.badge-mini-counter {
+    background: #ef4444;
+    color: #fff;
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 12px;
+    margin-left: 6px;
+}
+.badge-mini-counter.hidden {
+    display: none;
+}
+
+/* Botões rápidos de prazo no modal */
+.btn-quick-deadline {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: var(--text-secondary);
+    padding: 5px 11px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.btn-quick-deadline:hover {
+    background: var(--primary-color);
+    border-color: var(--primary-color);
+    color: #fff;
+}
+.btn-quick-deadline-clear:hover {
+    background: rgba(239, 68, 68, 0.2);
+    border-color: #ef4444;
+    color: #ef4444;
+}
+
+/* Badges de Status de Validade da Ficha */
+.workout-status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+.badge-status-active {
+    background: rgba(34, 197, 94, 0.15);
+    color: #4ade80;
+    border: 1px solid rgba(34, 197, 94, 0.3);
+}
+.badge-status-expiring-soon {
+    background: rgba(234, 179, 8, 0.15);
+    color: #fde047;
+    border: 1px solid rgba(234, 179, 8, 0.3);
+}
+.badge-status-expiring-today {
+    background: rgba(249, 115, 22, 0.2);
+    color: #fb923c;
+    border: 1px solid rgba(249, 115, 22, 0.4);
+    animation: pulse 2s infinite;
+}
+.badge-status-expired {
+    background: rgba(239, 68, 68, 0.2);
+    color: #f87171;
+    border: 1px solid rgba(239, 68, 68, 0.4);
+}
+
+/* Banner de Alerta no Portal do Aluno */
+.workout-deadline-alert-banner {
+    border-radius: 12px;
+    padding: 16px 20px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    animation: fadeIn 0.3s ease;
+}
+.alert-banner-expired {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(185, 28, 28, 0.25));
+    border: 1px solid rgba(239, 68, 68, 0.4);
+    color: #fecaca;
+}
+.alert-banner-expiring-today {
+    background: linear-gradient(135deg, rgba(249, 115, 22, 0.15), rgba(194, 65, 12, 0.25));
+    border: 1px solid rgba(249, 115, 22, 0.4);
+    color: #fed7aa;
+}
+.alert-banner-expiring-soon {
+    background: linear-gradient(135deg, rgba(234, 179, 8, 0.12), rgba(161, 98, 7, 0.2));
+    border: 1px solid rgba(234, 179, 8, 0.35);
+    color: #fef08a;
+}
+.alert-banner-icon {
+    font-size: 1.8rem;
+    flex-shrink: 0;
+}
+.alert-banner-text h4 {
+    font-size: 1rem;
+    font-weight: 700;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.alert-banner-text p {
+    font-size: 0.88rem;
+    opacity: 0.95;
+    margin: 0;
+}
+
+/* Notificações no Modal */
+.notification-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    padding: 14px 16px;
+    transition: all 0.2s ease;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+}
+.notification-card.unread {
+    background: rgba(139, 92, 246, 0.08);
+    border-color: rgba(139, 92, 246, 0.35);
+}
+.notification-card.unread::before {
+    content: "";
+    width: 8px;
+    height: 8px;
+    background: var(--primary-color);
+    border-radius: 50%;
+    margin-top: 6px;
+    flex-shrink: 0;
+}
+.notification-card-content {
+    flex: 1;
+}
+.notification-card-title {
+    font-size: 0.92rem;
+    font-weight: 600;
+    margin-bottom: 4px;
+    color: #fff;
+}
+.notification-card-msg {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    line-height: 1.4;
+    margin-bottom: 6px;
+}
+.notification-card-time {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+.notification-empty-state {
+    text-align: center;
+    padding: 35px 20px;
+    color: var(--text-muted);
+}
+
+/* Cards no Painel de Prazos (Admin) */
+.deadlines-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 16px;
+}
+.deadline-item-card {
+    border-radius: 12px;
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 14px;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.deadline-item-card:hover {
+    transform: translateY(-2px);
+}
+.deadline-card-expired {
+    background: rgba(239, 68, 68, 0.06);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+.deadline-card-expiring-today {
+    background: rgba(249, 115, 22, 0.06);
+    border: 1px solid rgba(249, 115, 22, 0.35);
+}
+.deadline-card-expiring-soon {
+    background: rgba(234, 179, 8, 0.05);
+    border: 1px solid rgba(234, 179, 8, 0.25);
+}
+.btn-whatsapp-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: #25d366;
+    color: #fff;
+    font-weight: 600;
+    font-size: 0.85rem;
+    padding: 8px 16px;
+    border-radius: 8px;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    border: none;
+    cursor: pointer;
+}
+.btn-whatsapp-action:hover {
+    background: #20ba5a;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(37, 211, 102, 0.3);
+}
+
+.deadlines-filter-select {
+    padding: 10px 16px;
+    border-radius: var(--radius-md);
+    background: rgba(255, 255, 255, 0.05);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    font-size: 0.9rem;
+    outline: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.deadlines-filter-select:hover, .deadlines-filter-select:focus {
+    border-color: var(--primary-color);
+    background: rgba(255, 255, 255, 0.08);
+}
+.deadlines-filter-select option {
+    background: var(--bg-surface-solid);
+    color: #fff;
+}
+
 

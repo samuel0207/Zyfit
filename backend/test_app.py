@@ -130,6 +130,52 @@ def run_tests():
     assert portal_workouts[0]["exercises"][0]["completed_today"] is True, "Erro: Exercício deveria aparecer concluído hoje."
     print("👉 OK! Aluno concluiu o exercício com sucesso e o status atualizou dinamicamente.")
 
+    # 8. Test Workout Deadlines & Automatic Notifications
+    print("\n[TEST 8] Testando prazos de treino e geração automática de notificações...")
+    from datetime import date, timedelta
+    today = date.today()
+    yesterday = today - timedelta(days=1)
+    
+    # Create expired workout for the student
+    expired_workout_payload = {
+        "student_id": student_id,
+        "title": "Treino B - Hipertrofia Pernas (Expirado)",
+        "description": "Ficha com prazo encerrado.",
+        "start_date": (yesterday - timedelta(days=30)).isoformat(),
+        "end_date": yesterday.isoformat()
+    }
+    response = client.post("/api/workouts", json=expired_workout_payload, headers=headers)
+    assert response.status_code == 201, f"Erro ao criar treino com prazo: {response.text}"
+    expired_workout = response.json()
+    assert expired_workout["status"] == "expired", f"Erro: status deveria ser 'expired', obteve {expired_workout['status']}"
+    assert expired_workout["days_remaining"] == -1, f"Erro: days_remaining deveria ser -1, obteve {expired_workout['days_remaining']}"
+    print(f"👉 OK! Treino criado com status={expired_workout['status']} e days_remaining={expired_workout['days_remaining']}.")
+
+    # Fetch notifications as student (this automatically detects expired workout and generates notification)
+    response = client.get("/api/notifications", headers=student_headers)
+    assert response.status_code == 200, f"Erro ao obter notificações: {response.text}"
+    notif_summary = response.json()
+    assert notif_summary["total_unread"] >= 1, "Erro: Notificação de treino vencido deveria ter sido criada."
+    notif = notif_summary["notifications"][0]
+    assert "Ficha de Treino Vencida" in notif["title"], f"Título inesperado: {notif['title']}"
+    assert notif["is_read"] is False, "Erro: Notificação nova deveria estar não lida."
+    notif_id = notif["id"]
+    print(f"👉 OK! Notificação automática criada com sucesso: '{notif['title']}' (id: {notif_id})")
+
+    # Mark notification as read
+    response = client.put(f"/api/notifications/{notif_id}/read", headers=student_headers)
+    assert response.status_code == 200, f"Erro ao marcar notificação como lida: {response.text}"
+    response = client.get("/api/notifications", headers=student_headers)
+    assert response.json()["total_unread"] == 0, "Erro: total_unread deveria ser 0 após ler notificação."
+    print("👉 OK! Notificação marcada como lida com sucesso.")
+
+    # Test Admin Expiring Workouts endpoint
+    response = client.get("/api/admin/expiring-workouts?days=7", headers=headers)
+    assert response.status_code == 200, f"Erro na rota admin/expiring-workouts: {response.text}"
+    expiring_list = response.json()
+    assert any(item["workout_id"] == expired_workout["id"] for item in expiring_list), "Erro: Treino expirado não retornado na lista do professor."
+    print("👉 OK! Rota /api/admin/expiring-workouts listou o treino expirado com link do WhatsApp.")
+
     # Cleanup Database (Delete testing users and workouts Cascade)
     print("\n[CLEANUP] Removendo registros de teste...")
     response = client.delete(f"/api/students/{student_id}", headers=headers)

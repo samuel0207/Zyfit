@@ -98,6 +98,11 @@
                 <i class="fa-solid fa-book-open"></i>
                 <span>Catálogo de Exercícios</span>
             </button>
+            <button class="admin-tab" data-tab="tab-deadlines" onclick="switchAdminTab('tab-deadlines')">
+                <i class="fa-solid fa-clock-rotate-left"></i>
+                <span>Controle de Prazos</span>
+                <span id="admin-deadlines-badge" class="badge-mini-counter hidden">0</span>
+            </button>
         </nav>
 
         <!-- TAB 1: Alunos (existing layout) -->
@@ -145,16 +150,16 @@
                                     <p id="view-student-pwd-container" style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px; display: flex; align-items: center; gap: 6px;"><i class="fa-solid fa-key"></i> Senha: <span id="view-student-password" style="font-weight: 600; color: var(--text-main);">------</span></p>
                                 </div>
                                 <!-- Data Meta Card -->
-                                <div id="goal-date-card" class="goal-date-card">
+                                <div id="goal-date-card" class="goal-date-card not-set" onclick="openGoalDateEditor()" style="cursor: pointer;" title="Clique para definir ou alterar a data meta">
                                     <div class="goal-date-icon">
                                         <i class="fa-solid fa-bullseye"></i>
                                     </div>
                                     <div class="goal-date-info">
                                         <span class="goal-date-label">DATA META</span>
                                         <span class="goal-date-value" id="view-goal-date">Não definida</span>
-                                        <span class="goal-date-countdown" id="view-goal-countdown"></span>
+                                        <span class="goal-date-countdown" id="view-goal-countdown">Clique para definir meta</span>
                                     </div>
-                                    <button class="btn-edit-goal-date" id="btn-edit-goal-date" title="Definir data meta" onclick="openGoalDateEditor()">
+                                    <button class="btn-edit-goal-date" id="btn-edit-goal-date" title="Definir data meta" onclick="event.stopPropagation(); openGoalDateEditor()">
                                         <i class="fa-regular fa-pen-to-square"></i>
                                     </button>
                                 </div>
@@ -329,6 +334,42 @@
                 </div>
             </div>
         </main>
+
+        <!-- TAB 3: Controle de Prazos (Admin) -->
+        <main id="tab-deadlines" class="dashboard-main admin-tab-content hidden">
+            <div class="catalog-container">
+                <div class="catalog-header glass-card" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+                    <div>
+                        <h2><i class="fa-solid fa-clock-rotate-left" style="color: var(--primary-color);"></i> Controle & Monitoramento de Prazos</h2>
+                        <p class="catalog-subtitle">Acompanhe treinos e datas metas vencidos ou prestes a vencer e notifique alunos no WhatsApp</p>
+                    </div>
+                    <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                        <select id="deadlines-filter-type" onchange="fetchExpiringWorkoutsAdmin()" class="deadlines-filter-select">
+                            <option value="all" selected>Todos os Prazos (Treinos + Metas)</option>
+                            <option value="goals">🎯 Somente Metas dos Alunos</option>
+                            <option value="workouts">📋 Somente Fichas de Treino</option>
+                        </select>
+                        <select id="deadlines-filter-days" onchange="fetchExpiringWorkoutsAdmin()" class="deadlines-filter-select">
+                            <option value="7">Próximos 7 dias + Vencidos</option>
+                            <option value="15">Próximos 15 dias + Vencidos</option>
+                            <option value="30" selected>Próximos 30 dias + Vencidos</option>
+                            <option value="60">Próximos 60 dias + Vencidos</option>
+                            <option value="90">Próximos 90 dias + Vencidos</option>
+                        </select>
+                        <button class="btn-primary" onclick="fetchExpiringWorkoutsAdmin()" style="padding: 10px 18px;">
+                            <i class="fa-solid fa-rotate-right"></i> Atualizar
+                        </button>
+                    </div>
+                </div>
+
+                <div id="deadlines-list" class="deadlines-container" style="margin-top: 20px;">
+                    <div class="loading-state">
+                        <i class="fa-solid fa-circle-notch fa-spin"></i>
+                        <p>Carregando monitoramento de prazos...</p>
+                    </div>
+                </div>
+            </div>
+        </main>
     </section>
 
     <!-- ========================================== -->
@@ -343,6 +384,10 @@
                 <span class="badge badge-student">ALUNO</span>
             </div>
             <div class="header-actions">
+                <button id="btn-notifications-student" class="btn-notifications" title="Notificações e Avisos de Prazo" onclick="openNotificationsModal()">
+                    <i class="fa-regular fa-bell"></i>
+                    <span id="notification-badge" class="notification-badge hidden">0</span>
+                </button>
                 <span id="student-name-header" class="user-greeting">Olá, Aluno</span>
                 <button id="btn-student-logout" class="btn-icon-danger" title="Sair do Sistema">
                     <i class="fa-solid fa-power-off"></i>
@@ -470,6 +515,30 @@
                         </label>
                     </div>
                 </div>
+
+                <div class="form-row-dates" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 15px;">
+                    <div class="input-group">
+                        <label for="workout-start-date"><i class="fa-regular fa-calendar-plus" style="color: var(--primary-color);"></i> Data de Início</label>
+                        <input type="date" id="workout-start-date">
+                    </div>
+                    <div class="input-group">
+                        <label for="workout-end-date"><i class="fa-regular fa-calendar-check" style="color: var(--primary-color);"></i> Data de Término (Prazo)</label>
+                        <input type="date" id="workout-end-date">
+                    </div>
+                </div>
+
+                <div class="quick-deadline-selector" style="margin-top: 8px; margin-bottom: 10px;">
+                    <span style="font-size: 0.8rem; color: var(--text-secondary); display: block; margin-bottom: 6px;">
+                        <i class="fa-solid fa-bolt" style="color: #eab308;"></i> Preenchimento Rápido do Prazo:
+                    </span>
+                    <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                        <button type="button" class="btn-quick-deadline" onclick="setWorkoutDuration(30)">+30 dias</button>
+                        <button type="button" class="btn-quick-deadline" onclick="setWorkoutDuration(45)">+45 dias</button>
+                        <button type="button" class="btn-quick-deadline" onclick="setWorkoutDuration(60)">+60 dias</button>
+                        <button type="button" class="btn-quick-deadline" onclick="setWorkoutDuration(90)">+90 dias</button>
+                        <button type="button" class="btn-quick-deadline btn-quick-deadline-clear" onclick="clearWorkoutDates()">Sem Prazo</button>
+                    </div>
+                </div>
                 
                 <div class="modal-footer">
                     <button type="button" class="btn-secondary btn-close-modal">Cancelar</button>
@@ -592,6 +661,40 @@
             </div>
             <div class="video-container-wrapper">
                 <div id="video-player-frame-container"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Central de Notificações do Aluno -->
+    <div id="modal-notifications" class="modal hidden">
+        <div class="modal-content glass-card" style="max-width: 540px;">
+            <div class="modal-header">
+                <h3><i class="fa-regular fa-bell" style="color: var(--primary-color);"></i> Notificações</h3>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <button id="btn-mark-all-read" class="btn-quick-deadline" style="padding: 6px 12px; font-size: 0.8rem;" title="Marcar todas como lidas" onclick="markAllNotificationsRead()">
+                        <i class="fa-solid fa-check-double"></i> Ler todas
+                    </button>
+                    <button class="btn-close-modal"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+            </div>
+            <div id="notifications-list" class="notifications-list-container" style="max-height: 420px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; margin-top: 15px;">
+                <!-- Itens dinâmicos -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Editor Rápido de Data Meta do Aluno -->
+    <div id="goal-date-editor-overlay" class="goal-date-editor-overlay hidden" onclick="if(event.target === this) closeGoalDateEditor()">
+        <div class="goal-date-editor glass-card">
+            <h4><i class="fa-solid fa-bullseye"></i> Definir Data Meta</h4>
+            <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 15px; line-height: 1.4;">
+                Defina uma data alvo para acompanhar o progresso deste aluno (ex: reavaliação física, pesagem, meta de peso).
+            </p>
+            <input type="date" id="quick-goal-date-input">
+            <div class="goal-date-editor-actions">
+                <button type="button" class="btn-remove-goal" id="btn-remove-quick-goal" onclick="removeGoalDate()">Remover</button>
+                <button type="button" class="btn-secondary" onclick="closeGoalDateEditor()">Cancelar</button>
+                <button type="button" class="btn-primary" onclick="saveGoalDate()">Salvar Meta</button>
             </div>
         </div>
     </div>
