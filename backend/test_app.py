@@ -19,6 +19,14 @@ def run_tests():
     print("INICIANDO TESTES AUTOMATIZADOS DO BACKEND")
     print("="*60)
 
+    # Clean up previous test runs if any
+    cleanup_db = next(get_db())
+    old_test_student = cleanup_db.query(models.User).filter(models.User.phone == "11988888888").first()
+    if old_test_student:
+        cleanup_db.delete(old_test_student)
+        cleanup_db.commit()
+    cleanup_db.close()
+
     # 1. Test Seeding & Database Tables
     print("\n[TEST 1] Verificando tabelas e Seeding do Administrador...")
     db = next(get_db())
@@ -98,7 +106,36 @@ def run_tests():
     assert response.status_code == 201, f"Erro ao adicionar exercício: {response.text}"
     exercise_data = response.json()
     exercise_id = exercise_data["id"]
-    print(f"👉 OK! Exercício adicionado com sucesso. ID: {exercise_id}")
+    print(f"👉 OK! Exercício 1 adicionado com sucesso. ID: {exercise_id}")
+    # Add 2nd Exercise to test reordering
+    exercise_payload_2 = {
+        "workout_id": workout_id,
+        "name": "Crucifixo Reto",
+        "sets": 3,
+        "repetitions": "15 repetições",
+        "rest_time": "60s",
+        "video_url": "https://www.youtube.com/watch?v=s3NfNDtZ5sM",
+        "order_index": 2
+    }
+    response2 = client.post("/api/exercises", json=exercise_payload_2, headers=headers)
+    assert response2.status_code == 201, f"Erro ao adicionar segundo exercício: {response2.text}"
+    exercise_id_2 = response2.json()["id"]
+
+    # Test Reorder: place exercise_id_2 first, exercise_id second
+    reorder_payload = {
+        "workout_id": workout_id,
+        "ordered_ids": [exercise_id_2, exercise_id]
+    }
+    reorder_resp = client.post("/api/exercises/reorder", json=reorder_payload, headers=headers)
+    assert reorder_resp.status_code == 200, f"Erro reordenando: {reorder_resp.text}"
+
+    # Verify new order in workout
+    chk_resp = client.get(f"/api/workouts/{workout_id}", headers=headers)
+    assert chk_resp.status_code == 200
+    chk_exercises = chk_resp.json()["exercises"]
+    assert chk_exercises[0]["id"] == exercise_id_2, "Erro: Exercício 2 deveria ser o primeiro!"
+    assert chk_exercises[1]["id"] == exercise_id, "Erro: Exercício 1 deveria ser o segundo!"
+    print(f"👉 OK! Reordenação de exercícios validada com sucesso ({chk_exercises[0]['name']} -> {chk_exercises[1]['name']}).")
 
     # 6. Test Student Portal Logins & Workouts list
     print("\n[TEST 6] Testando login e Portal do Aluno...")
@@ -129,7 +166,8 @@ def run_tests():
     # Verify it shows completed_today = True now
     response = client.get("/api/student-portal/my-workouts", headers=student_headers)
     portal_workouts = response.json()
-    assert portal_workouts[0]["exercises"][0]["completed_today"] is True, "Erro: Exercício deveria aparecer concluído hoje."
+    completed_ex = next(ex for ex in portal_workouts[0]["exercises"] if ex["id"] == exercise_id)
+    assert completed_ex["completed_today"] is True, "Erro: Exercício deveria aparecer concluído hoje."
     print("👉 OK! Aluno concluiu o exercício com sucesso e o status atualizou dinamicamente.")
 
     # 8. Test Workout Deadlines & Automatic Notifications

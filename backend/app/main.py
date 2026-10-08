@@ -574,6 +574,12 @@ def create_exercise(
     if not workout:
         raise HTTPException(status_code=400, detail="A Ficha de treino fornecida não existe.")
         
+    # Auto-assign next sequential order_index if default/unset
+    order_idx = exercise_in.order_index
+    if order_idx is None or order_idx == 0:
+        existing_count = db.query(models.Exercise).filter(models.Exercise.workout_id == exercise_in.workout_id).count()
+        order_idx = existing_count
+
     exercise = models.Exercise(
         workout_id=exercise_in.workout_id,
         name=exercise_in.name,
@@ -581,7 +587,7 @@ def create_exercise(
         repetitions=exercise_in.repetitions,
         rest_time=exercise_in.rest_time,
         video_url=exercise_in.video_url,
-        order_index=exercise_in.order_index
+        order_index=order_idx
     )
     db.add(exercise)
     db.commit()
@@ -626,20 +632,19 @@ def delete_exercise(
 
 @app.post("/api/exercises/reorder")
 def reorder_exercises(
-    workout_id: str,
-    ordered_ids: List[str],
+    payload: schemas.ExerciseReorderRequest,
     db: Session = Depends(get_db),
     admin: models.User = Depends(auth.get_admin_user)
 ):
-    workout = db.query(models.Workout).filter(models.Workout.id == workout_id).first()
+    workout = db.query(models.Workout).filter(models.Workout.id == payload.workout_id).first()
     if not workout:
         raise HTTPException(status_code=404, detail="Treino não encontrado.")
         
     # Fast reordering index map
-    for index, exercise_id in enumerate(ordered_ids):
+    for index, exercise_id in enumerate(payload.ordered_ids):
         exercise = db.query(models.Exercise).filter(
             models.Exercise.id == exercise_id, 
-            models.Exercise.workout_id == workout_id
+            models.Exercise.workout_id == payload.workout_id
         ).first()
         if exercise:
             exercise.order_index = index

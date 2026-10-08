@@ -76,6 +76,11 @@ class ExerciseResponse(ExerciseBase):
         from_attributes = True
         orm_mode = True
 
+class ExerciseReorderRequest(BaseModel):
+    workout_id: str
+    ordered_ids: List[str]
+
+
 
 # ----------------- WORKOUT SCHEMAS -----------------
 class WorkoutBase(BaseModel):

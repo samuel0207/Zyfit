@@ -1,7 +1,7 @@
 // ==========================================================================
 // CONFIGURAÇÃO DA API & ESTADO GLOBAL
 // ==========================================================================
-const API_BASE_URL = window.location.protocol === 'file:' || window.location.hostname === '127.0.0.1' 
+const API_BASE_URL = window.location.protocol === 'file:' || window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost'
     ? 'http://localhost:8000' 
     : window.location.origin;
 
@@ -629,11 +629,23 @@ function renderWorkoutsList(workoutsList) {
     }
     
     workoutsContainer.innerHTML = workoutsList.map(workout => {
-        const exercisesHtml = workout.exercises && workout.exercises.length > 0
+        const totalExercises = workout.exercises ? workout.exercises.length : 0;
+        const exercisesHtml = workout.exercises && totalExercises > 0
             ? workout.exercises.map((ex, index) => `
-                <div class="exercise-card-wrapper" id="exercise-card-${ex.id}">
+                <div class="exercise-card-wrapper" id="exercise-card-${ex.id}"
+                     draggable="true"
+                     data-workout-id="${workout.id}"
+                     data-exercise-id="${ex.id}"
+                     ondragstart="handleExerciseDragStart(event, '${workout.id}', '${ex.id}')"
+                     ondragover="handleExerciseDragOver(event)"
+                     ondragleave="handleExerciseDragLeave(event)"
+                     ondrop="handleExerciseDrop(event, '${workout.id}', '${ex.id}')"
+                     ondragend="handleExerciseDragEnd(event)">
                     <div class="exercise-row">
                         <div class="exercise-main-details">
+                            <span class="exercise-reorder-handle" title="Arraste para reposicionar">
+                                <i class="fa-solid fa-grip-vertical"></i>
+                            </span>
                             <span class="exercise-number">${index + 1}</span>
                             <div class="exercise-meta-info">
                                 <h5>${escapeHtml(ex.name)}</h5>
@@ -657,6 +669,14 @@ function renderWorkoutsList(workoutsList) {
                                 </div>`
                                 : ''
                             }
+                            <div class="exercise-order-actions" title="Alterar ordem do exercício">
+                                <button type="button" class="btn-icon-sm btn-reorder" onclick="moveExercise('${workout.id}', '${ex.id}', -1)" title="Subir na ordem" ${index === 0 ? 'disabled' : ''}>
+                                    <i class="fa-solid fa-arrow-up"></i>
+                                </button>
+                                <button type="button" class="btn-icon-sm btn-reorder" onclick="moveExercise('${workout.id}', '${ex.id}', 1)" title="Descer na ordem" ${index === totalExercises - 1 ? 'disabled' : ''}>
+                                    <i class="fa-solid fa-arrow-down"></i>
+                                </button>
+                            </div>
                             <div class="exercise-crud-buttons">
                                 <button class="btn-icon-sm" onclick="openEditExercise('${workout.id}', '${ex.id}')" title="Editar exercício">
                                     <i class="fa-regular fa-pen-to-square"></i>
@@ -874,6 +894,146 @@ async function deleteExercise(exerciseId) {
         fetchWorkouts(state.selectedStudentId);
     } catch (e) {
         showToast(e.message || 'Falha ao excluir exercício.', 'error');
+    }
+}
+
+// ==========================================================================
+// REORDENAÇÃO DE EXERCÍCIOS (BOTÕES E DRAG & DROP)
+// ==========================================================================
+let draggedExerciseInfo = null;
+
+async function moveExercise(workoutId, exerciseId, direction) {
+    const workout = state.workouts.find(w => w.id === workoutId);
+    if (!workout || !workout.exercises || workout.exercises.length <= 1) return;
+
+    const currentIndex = workout.exercises.findIndex(e => e.id === exerciseId);
+    if (currentIndex === -1) return;
+
+    const targetIndex = currentIndex + direction;
+    if (targetIndex < 0 || targetIndex >= workout.exercises.length) return;
+
+    // Swap items locally for instant feedback
+    const [movedExercise] = workout.exercises.splice(currentIndex, 1);
+    workout.exercises.splice(targetIndex, 0, movedExercise);
+
+    // Sync order_index in memory
+    workout.exercises.forEach((ex, idx) => {
+        ex.order_index = idx;
+    });
+
+    // Re-render immediately
+    renderWorkoutsList(state.workouts);
+
+    // Persist new order on backend
+    try {
+        const orderedIds = workout.exercises.map(e => e.id);
+        await apiRequest('/api/exercises/reorder', {
+            method: 'POST',
+            body: JSON.stringify({
+                workout_id: workoutId,
+                ordered_ids: orderedIds
+            })
+        });
+        showToast('Ordem dos exercícios atualizada! ✓', 'success');
+    } catch (err) {
+        console.error('Falha ao reordenar exercícios:', err);
+        showToast('Erro ao salvar nova ordem dos exercícios.', 'error');
+        fetchWorkouts(state.selectedStudentId);
+    }
+}
+
+function handleExerciseDragStart(e, workoutId, exerciseId) {
+    draggedExerciseInfo = { workoutId, exerciseId };
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', exerciseId);
+    const card = document.getElementById(`exercise-card-${exerciseId}`);
+    if (card) {
+        card.classList.add('is-dragging');
+    }
+}
+
+function handleExerciseDragOver(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    const card = e.currentTarget;
+    if (card && !card.classList.contains('is-dragging')) {
+        card.classList.add('drag-over');
+    }
+}
+
+function handleExerciseDragLeave(e) {
+    const card = e.currentTarget;
+    if (card) {
+        card.classList.remove('drag-over');
+    }
+}
+
+function handleExerciseDragEnd(e) {
+    document.querySelectorAll('.exercise-card-wrapper').forEach(el => {
+        el.classList.remove('is-dragging', 'drag-over');
+    });
+    draggedExerciseInfo = null;
+}
+
+async function handleExerciseDrop(e, targetWorkoutId, targetExerciseId) {
+    e.preventDefault();
+    e.stopPropagation();
+
+    document.querySelectorAll('.exercise-card-wrapper').forEach(el => {
+        el.classList.remove('is-dragging', 'drag-over');
+    });
+
+    if (!draggedExerciseInfo) return;
+    const { workoutId: sourceWorkoutId, exerciseId: sourceExerciseId } = draggedExerciseInfo;
+
+    // Only allow reordering within the same workout
+    if (sourceWorkoutId !== targetWorkoutId || sourceExerciseId === targetExerciseId) {
+        draggedExerciseInfo = null;
+        return;
+    }
+
+    const workout = state.workouts.find(w => w.id === targetWorkoutId);
+    if (!workout || !workout.exercises) {
+        draggedExerciseInfo = null;
+        return;
+    }
+
+    const sourceIndex = workout.exercises.findIndex(e => e.id === sourceExerciseId);
+    const targetIndex = workout.exercises.findIndex(e => e.id === targetExerciseId);
+
+    if (sourceIndex === -1 || targetIndex === -1) {
+        draggedExerciseInfo = null;
+        return;
+    }
+
+    // Move in memory
+    const [moved] = workout.exercises.splice(sourceIndex, 1);
+    workout.exercises.splice(targetIndex, 0, moved);
+
+    workout.exercises.forEach((ex, idx) => {
+        ex.order_index = idx;
+    });
+
+    // Re-render immediately
+    renderWorkoutsList(state.workouts);
+
+    draggedExerciseInfo = null;
+
+    // Persist new order on backend
+    try {
+        const orderedIds = workout.exercises.map(e => e.id);
+        await apiRequest('/api/exercises/reorder', {
+            method: 'POST',
+            body: JSON.stringify({
+                workout_id: targetWorkoutId,
+                ordered_ids: orderedIds
+            })
+        });
+        showToast('Ordem dos exercícios atualizada! ✓', 'success');
+    } catch (err) {
+        console.error('Falha ao salvar reordenação:', err);
+        showToast('Erro ao salvar nova ordem dos exercícios.', 'error');
+        fetchWorkouts(state.selectedStudentId);
     }
 }
 

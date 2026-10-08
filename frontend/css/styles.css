@@ -1064,10 +1064,81 @@ input:focus + .input-icon {
     border: 1px solid rgba(255, 255, 255, 0.03);
     overflow: hidden;
     transition: var(--transition-smooth);
+    position: relative;
 }
 .exercise-card-wrapper:hover {
     border-color: rgba(255, 255, 255, 0.08);
 }
+.exercise-card-wrapper.is-dragging {
+    opacity: 0.35;
+    transform: scale(0.99);
+    border: 1px dashed var(--primary);
+    box-shadow: 0 0 15px rgba(139, 92, 246, 0.25);
+}
+.exercise-card-wrapper.drag-over {
+    border-top: 2px solid var(--primary) !important;
+    background: rgba(139, 92, 246, 0.08);
+}
+
+/* Reorder Handle & Buttons */
+.exercise-reorder-handle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 26px;
+    color: var(--text-muted);
+    cursor: grab;
+    transition: var(--transition-smooth);
+    user-select: none;
+    border-radius: var(--radius-sm);
+    margin-right: -4px;
+}
+.exercise-reorder-handle:hover {
+    color: var(--primary);
+    background: rgba(139, 92, 246, 0.12);
+}
+.exercise-reorder-handle:active {
+    cursor: grabbing;
+}
+
+.exercise-order-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    background: rgba(255, 255, 255, 0.04);
+    padding: 3px 4px;
+    border-radius: var(--radius-sm);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.btn-reorder {
+    background: transparent;
+    color: var(--text-secondary);
+    border: none;
+    width: 24px;
+    height: 24px;
+    border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 0.72rem;
+    transition: var(--transition-smooth);
+}
+
+.btn-reorder:hover:not(:disabled) {
+    background: rgba(139, 92, 246, 0.25);
+    color: var(--primary-hover);
+    transform: translateY(-1px);
+}
+
+.btn-reorder:disabled {
+    opacity: 0.2;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
 .exercise-inline-video {
     padding: 14px;
     background: rgba(10, 8, 18, 0.7);
