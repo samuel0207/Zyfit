@@ -18,6 +18,10 @@ class Settings:
     # Use SQLite by default for easy development, configurable to PostgreSQL via env var
     # On Vercel, fall back to /tmp/ to avoid read-only filesystem crash
     default_db = "sqlite:////tmp/treinos.db" if os.getenv("VERCEL") else "sqlite:///./treinos.db"
-    DATABASE_URL: str = os.getenv("DATABASE_URL", default_db)
+    raw_db = os.getenv("DATABASE_URL", default_db)
+    if raw_db.startswith("postgres://"):
+        raw_db = raw_db.replace("postgres://", "postgresql://", 1)
+    DATABASE_URL: str = raw_db
+
 
 settings = Settings()

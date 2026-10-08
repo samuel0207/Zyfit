@@ -113,35 +113,43 @@ app.add_middleware(
 # Seed default database values on startup (create default PE Teacher admin)
 @app.on_event("startup")
 def seed_data():
-    db = next(get_db())
     try:
-        # Check if any admin exists, if not create one
-        admin = db.query(models.User).filter(models.User.role == "admin").first()
-        if not admin:
-            admin_user = models.User(
-                name="Professora Maria (Admin)",
-                phone="153624zyfit22",
-                password_hash=auth.get_password_hash("153624zyfit22"),
-                password="153624zyfit22",
-                role="admin"
-            )
-            db.add(admin_user)
-            db.commit()
-            print("\n" + "="*50)
-            print("SEED DATABASE: Usuário Admin padrão criado com sucesso!")
-            print("Celular/Login: 153624zyfit22")
-            print("Senha: 153624zyfit22")
-            print("="*50 + "\n")
-        else:
-            # Upgrade or synchronize existing admin to match database password credentials
-            admin.phone = "153624zyfit22"
-            admin.password = "153624zyfit22"
-            admin.password_hash = auth.get_password_hash("153624zyfit22")
-            db.commit()
+        db = next(get_db())
+        try:
+            # Check if any admin exists, if not create one
+            admin = db.query(models.User).filter(models.User.role == "admin").first()
+            if not admin:
+                admin_user = models.User(
+                    name="Professora Maria (Admin)",
+                    phone="153624zyfit22",
+                    password_hash=auth.get_password_hash("153624zyfit22"),
+                    password="153624zyfit22",
+                    role="admin"
+                )
+                db.add(admin_user)
+                db.commit()
+                print("\n" + "="*50)
+                print("SEED DATABASE: Usuário Admin padrão criado com sucesso!")
+                print("Celular/Login: 153624zyfit22")
+                print("Senha: 153624zyfit22")
+                print("="*50 + "\n")
+            else:
+                # Upgrade or synchronize existing admin to match database password credentials
+                admin.phone = "153624zyfit22"
+                admin.password = "153624zyfit22"
+                admin.password_hash = auth.get_password_hash("153624zyfit22")
+                db.commit()
+        finally:
+            db.close()
     except Exception as e:
-        print(f"Erro ao executar seeding inicial: {e}")
-    finally:
-        db.close()
+        print(f"[Seed Warning] Erro ao executar seeding inicial: {e}")
+
+@app.get("/api/health")
+def health():
+    return {
+        "status": "healthy",
+        "db": settings.DATABASE_URL.split("@")[-1] if "@" in settings.DATABASE_URL else "local"
+    }
 
 
 # -------------------------------------------------------------
