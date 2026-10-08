@@ -1,0 +1,19 @@
+# Native Android and Capacitor tooling (needed for APK locally, not for Vercel web deployment)
+android/
+package.json
+package-lock.json
+capacitor.config.json
+frontend/capacitor.config.json
+dist/
+node_modules/
+
+# Local Python caches & virtualenv
+backend/venv/
+venv/
+*.db
+backend/treinos.db
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+backend/.env

@@ -16,17 +16,20 @@ from app.config import settings
 from app.database import engine, Base, get_db
 from app import models, schemas, auth
 
-# Auto-create tables on startup
-Base.metadata.create_all(bind=engine)
+# Auto-create tables safely on startup
+try:
+    Base.metadata.create_all(bind=engine)
+except Exception as e:
+    print(f"[Startup Warning] Could not auto-create tables: {e}")
 
 # Auto-migrate: Add columns safely for both SQLite and PostgreSQL
 from sqlalchemy import text, inspect as sa_inspect
 
 def safe_migrate():
     """Run migrations that are safe for both SQLite and PostgreSQL."""
-    inspector = sa_inspect(engine)
-    
     try:
+        inspector = sa_inspect(engine)
+        
         # Check if 'workouts' table exists before migrating
         if inspector.has_table('workouts'):
             existing_cols = [col['name'] for col in inspector.get_columns('workouts')]
@@ -75,7 +78,11 @@ def safe_migrate():
     except Exception as e:
         print(f"[Migration Warning] Non-critical migration error: {e}")
 
-safe_migrate()
+try:
+    safe_migrate()
+except Exception as e:
+    print(f"[Startup Warning] safe_migrate failed: {e}")
+
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
