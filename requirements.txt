@@ -6,6 +6,6 @@ bcrypt
 python-jose[cryptography]
 pydantic[email]
 python-multipart
+psycopg[binary]
 psycopg2-binary
 python-dotenv
-
