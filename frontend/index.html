@@ -165,7 +165,16 @@
                                 </div>
                             </div>
                             
+                            <div class="profile-mobile-nav">
+                                <button type="button" class="btn-back-to-list" id="btn-back-to-students" onclick="backToStudentsList()">
+                                    <i class="fa-solid fa-arrow-left"></i> Voltar à Lista de Alunos
+                                </button>
+                            </div>
                             <div class="profile-stats">
+                                <div class="stat-box">
+                                    <span class="stat-label">Idade</span>
+                                    <span class="stat-value" id="view-student-age">-- anos</span>
+                                </div>
                                 <div class="stat-box">
                                     <span class="stat-label">Peso</span>
                                     <span class="stat-value" id="view-student-weight">-- kg</span>
@@ -432,7 +441,11 @@
                     <input type="password" id="student-password" placeholder="Defina uma senha provisória">
                 </div>
                 
-                <div class="input-row">
+                <div class="input-row input-row-3">
+                    <div class="input-group">
+                        <label for="student-age">Idade (anos)</label>
+                        <input type="number" id="student-age" min="1" max="120" placeholder="Ex: 28">
+                    </div>
                     <div class="input-group">
                         <label for="student-weight">Peso (kg)</label>
                         <input type="number" id="student-weight" step="0.1" placeholder="Ex: 75.5">
@@ -590,8 +603,14 @@
                 
                 <div class="input-group">
                     <label for="exercise-video">URL do Vídeo Demonstrativo (YouTube/Vimeo)</label>
-                    <input type="url" id="exercise-video" placeholder="https://www.youtube.com/watch?v=...">
-                    <small class="input-help">Cole o link do YouTube ou Vimeo para exibir o player embutido para o aluno.</small>
+                    <div class="input-with-action">
+                        <input type="url" id="exercise-video" placeholder="https://www.youtube.com/watch?v=...">
+                        <button type="button" class="btn-input-action" id="btn-preview-workout-video" title="Visualizar vídeo integrado">
+                            <i class="fa-solid fa-play"></i> Prévia
+                        </button>
+                    </div>
+                    <small class="input-help">Cole o link do YouTube, Shorts ou Vimeo para ver a demonstração integrada.</small>
+                    <div id="exercise-video-preview-box" class="modal-video-preview-box hidden"></div>
                 </div>
                 
                 <div class="modal-footer">
@@ -636,7 +655,14 @@
                 
                 <div class="input-group">
                     <label for="catalog-exercise-video">URL do Vídeo Demonstrativo</label>
-                    <input type="url" id="catalog-exercise-video" placeholder="https://www.youtube.com/watch?v=...">
+                    <div class="input-with-action">
+                        <input type="url" id="catalog-exercise-video" placeholder="https://www.youtube.com/watch?v=...">
+                        <button type="button" class="btn-input-action" id="btn-preview-catalog-video" title="Visualizar vídeo integrado">
+                            <i class="fa-solid fa-play"></i> Prévia
+                        </button>
+                    </div>
+                    <small class="input-help">Cole o link para pré-visualizar o vídeo integrado ao exercício.</small>
+                    <div id="catalog-exercise-video-preview-box" class="modal-video-preview-box hidden"></div>
                 </div>
 
                 <div class="input-group">

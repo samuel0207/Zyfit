@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">zyfit</string>
+    <string name="title_activity_main">zyfit</string>
+    <string name="package_name">com.zyfit.app</string>
+    <string name="custom_url_scheme">com.zyfit.app</string>
+</resources>

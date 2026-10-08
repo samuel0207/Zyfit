@@ -57,6 +57,11 @@ def safe_migrate():
                 with engine.begin() as conn:
                     conn.execute(text("ALTER TABLE users ADD COLUMN password VARCHAR(100);"))
             
+            # Add age column if it doesn't exist
+            if 'age' not in existing_user_cols:
+                with engine.begin() as conn:
+                    conn.execute(text("ALTER TABLE users ADD COLUMN age INTEGER;"))
+
             # Add goal_date column if it doesn't exist
             if 'goal_date' not in existing_user_cols:
                 with engine.begin() as conn:
@@ -217,6 +222,7 @@ def create_student(
         password_hash=hashed_password,
         password=student_in.password,
         role="student",
+        age=student_in.age,
         weight=student_in.weight,
         height=student_in.height,
         goals=student_in.goals,

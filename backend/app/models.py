@@ -18,6 +18,7 @@ class User(Base):
     role = Column(String(20), nullable=False)  # 'admin' or 'student'
     
     # Student specific fields (nullable)
+    age = Column(Integer, nullable=True)
     weight = Column(Float, nullable=True)
     height = Column(Float, nullable=True)
     goals = Column(Text, nullable=True)

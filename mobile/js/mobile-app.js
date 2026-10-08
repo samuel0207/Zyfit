@@ -269,6 +269,10 @@ function renderDashboard() {
         <div class="welcome-goals">Foco: <strong>${state.user.goals || 'Manter saúde e constância.'}</strong></div>
         <div class="stats-row">
             <div class="stat-pill">
+                <span class="stat-label">Idade</span>
+                <span class="stat-value">${state.user.age ? state.user.age + ' anos' : '--'}</span>
+            </div>
+            <div class="stat-pill">
                 <span class="stat-label">Peso</span>
                 <span class="stat-value">${w ? w + ' kg' : '--'}</span>
             </div>

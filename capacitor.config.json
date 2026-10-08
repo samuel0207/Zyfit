@@ -1,0 +1,9 @@
+{
+  "appId": "com.zyfit.app",
+  "appName": "zyfit",
+  "webDir": "dist",
+  "server": {
+    "url": "https://zyfit-sepia.vercel.app/",
+    "cleartext": true
+  }
+}

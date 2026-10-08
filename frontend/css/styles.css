@@ -290,6 +290,11 @@ input:focus + .input-icon {
     grid-template-columns: 1fr 1fr;
     gap: 16px;
 }
+.input-row-3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+}
 
 .input-help {
     display: block;
@@ -985,13 +990,251 @@ input:focus + .input-icon {
     align-items: center;
     gap: 12px;
 }
+.exercise-video-actions-admin {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
 .btn-video-badge {
-    background: rgba(139, 92, 246, 0.1);
+    background: rgba(139, 92, 246, 0.12);
     color: var(--primary-hover);
     font-size: 0.75rem;
-    padding: 4px 10px;
+    font-weight: 600;
+    padding: 6px 12px;
     border-radius: var(--radius-sm);
-    border: 1px solid rgba(139, 92, 246, 0.2);
+    border: 1px solid rgba(139, 92, 246, 0.3);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: var(--transition-smooth);
+}
+.btn-video-badge:hover {
+    background: rgba(139, 92, 246, 0.25);
+    border-color: var(--primary);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 10px var(--primary-glow);
+}
+
+.btn-video-watch-admin {
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.2) 0%, rgba(6, 182, 212, 0.2) 100%);
+    color: #fff;
+    font-size: 0.78rem;
+    font-weight: 600;
+    padding: 6px 12px;
+    border-radius: var(--radius-sm);
+    border: 1px solid rgba(139, 92, 246, 0.4);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: var(--transition-smooth);
+}
+.btn-video-watch-admin i {
+    color: var(--accent-student);
+    font-size: 0.95rem;
+}
+.btn-video-watch-admin:hover {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--accent-student) 100%);
+    border-color: var(--accent-student);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(6, 182, 212, 0.3);
+}
+
+.btn-inline-video-toggle, .btn-catalog-inline-toggle {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-secondary);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: var(--transition-smooth);
+}
+.btn-inline-video-toggle:hover, .btn-catalog-inline-toggle:hover {
+    background: rgba(139, 92, 246, 0.2);
+    border-color: var(--primary);
+    color: var(--primary-hover);
+}
+
+.exercise-card-wrapper {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    margin-bottom: 8px;
+    border-radius: var(--radius-md);
+    background: rgba(0, 0, 0, 0.18);
+    border: 1px solid rgba(255, 255, 255, 0.03);
+    overflow: hidden;
+    transition: var(--transition-smooth);
+}
+.exercise-card-wrapper:hover {
+    border-color: rgba(255, 255, 255, 0.08);
+}
+.exercise-inline-video {
+    padding: 14px;
+    background: rgba(10, 8, 18, 0.7);
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    animation: fadeIn 0.3s ease;
+}
+.inline-video-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+.btn-close-inline {
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text-secondary);
+    border: none;
+    border-radius: var(--radius-sm);
+    padding: 4px 8px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    transition: var(--transition-smooth);
+}
+.btn-close-inline:hover {
+    background: rgba(239, 68, 68, 0.2);
+    color: var(--danger);
+}
+
+.catalog-card-video-integrated {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 12px;
+}
+.btn-catalog-video-play {
+    flex: 1;
+    background: rgba(139, 92, 246, 0.15);
+    border: 1px solid rgba(139, 92, 246, 0.35);
+    color: var(--primary-hover);
+    padding: 8px 12px;
+    border-radius: var(--radius-sm);
+    font-size: 0.8rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    cursor: pointer;
+    transition: var(--transition-smooth);
+}
+.btn-catalog-video-play:hover {
+    background: var(--primary);
+    color: #fff;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px var(--primary-glow);
+}
+
+.video-embed-box {
+    position: relative;
+    width: 100%;
+    height: 0;
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    background: #000;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.video-embed-box.aspect-widescreen {
+    padding-bottom: 56.25%; /* 16:9 aspect ratio */
+}
+.video-embed-box.aspect-vertical {
+    max-width: 320px;
+    margin: 0 auto;
+    padding-bottom: 177.78%; /* 9:16 Shorts */
+}
+.video-embed-box iframe,
+.video-embed-box video {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border: none;
+}
+.video-embed-fallback {
+    padding: 18px;
+    text-align: center;
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: var(--radius-sm);
+}
+
+.input-with-action {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+.input-with-action input {
+    flex: 1;
+}
+.btn-input-action {
+    background: rgba(139, 92, 246, 0.15);
+    color: var(--primary-hover);
+    border: 1px solid rgba(139, 92, 246, 0.35);
+    padding: 11px 16px;
+    border-radius: var(--radius-md);
+    font-size: 0.85rem;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: var(--transition-smooth);
+}
+.btn-input-action:hover {
+    background: var(--primary);
+    color: #fff;
+    transform: translateY(-1px);
+}
+.modal-video-preview-box {
+    margin-top: 12px;
+    padding: 12px;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--radius-md);
+    animation: fadeIn 0.3s ease;
+}
+.preview-box-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.student-age-pill {
+    display: inline-block;
+    background: rgba(139, 92, 246, 0.15);
+    color: var(--primary-hover);
+    padding: 1px 7px;
+    border-radius: 6px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    margin-left: 2px;
+}
+.profile-mobile-nav {
+    display: none;
+    margin-bottom: 16px;
+}
+.btn-back-to-list {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: var(--text-primary);
+    padding: 8px 14px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    border-radius: var(--radius-sm);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: var(--transition-smooth);
+}
+.btn-back-to-list:hover {
+    background: rgba(139, 92, 246, 0.2);
+    border-color: var(--primary);
+    color: var(--primary-hover);
 }
 
 .exercise-crud-buttons {
@@ -1132,56 +1375,111 @@ input:focus + .input-icon {
 }
 
 /* ==========================================================================
-   RESPONSIVO E MOBILE-FIRST
+   MULTI-DEVICE RESPONSIVE DESIGN SYSTEM
+   Suporte: Mobile (320-480px), Phablets (481-768px), Tablets (769-1024px), Desktops (1025px+)
    ========================================================================== */
+
+/* 1. Tablets & Small Laptops (max-width: 1024px) */
 @media (max-width: 1024px) {
+    .dashboard-main {
+        padding: clamp(16px, 2.5vw, 24px);
+    }
     .sidebar-layout {
         grid-template-columns: 1fr;
+        gap: 20px;
     }
     .students-section {
         height: auto;
-        max-height: 400px;
+        max-height: 380px;
+    }
+    .profile-mobile-nav {
+        display: block;
+    }
+    .profile-stats {
+        grid-template-columns: repeat(4, 1fr);
+        gap: 12px;
     }
 }
 
+/* 2. Tablets Portrait & Large Mobile (max-width: 768px) */
 @media (max-width: 768px) {
     .dashboard-main {
-        padding: 16px;
+        padding: 14px 12px;
     }
     .app-header {
-        padding: 0 16px;
+        padding: 0 14px;
+        height: 64px;
+    }
+    .header-logo h2 {
+        font-size: 1.15rem;
+    }
+    .header-logo i {
+        font-size: 1.15rem;
+        padding: 6px;
+    }
+    .user-greeting {
+        font-size: 0.82rem;
+    }
+    .profile-main-info {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 14px;
+    }
+    .goal-date-card {
+        width: 100%;
+        box-sizing: border-box;
     }
     .profile-stats {
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(2, 1fr);
         gap: 10px;
     }
     .input-row {
         grid-template-columns: 1fr;
         gap: 12px;
     }
+    .input-row-3 {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
     .modal-content {
-        padding: 20px;
+        padding: 18px 14px;
+        width: calc(100% - 20px);
+        margin: 10px;
+        max-height: 90vh;
+    }
+    .exercise-card-wrapper {
+        margin-bottom: 10px;
     }
     .exercise-row {
         flex-direction: column;
-        align-items: flex-start;
+        align-items: stretch;
         gap: 12px;
-        padding: 16px;
+        padding: 14px;
     }
     .exercise-right-actions {
         width: 100%;
         justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    .exercise-video-actions-admin {
+        flex: 1;
+        justify-content: flex-start;
+    }
+    .exercise-crud-buttons {
+        margin-left: auto;
     }
     .profile-actions {
         flex-direction: column;
+        gap: 8px;
     }
     .profile-actions button {
         width: 100%;
     }
     .toast {
-        left: 20px;
-        right: 20px;
-        bottom: 20px;
+        left: 14px;
+        right: 14px;
+        bottom: 14px;
     }
     
     /* Responsive Student Exercise Cards */
@@ -1211,6 +1509,111 @@ input:focus + .input-icon {
         gap: 6px !important;
         padding: 10px !important;
         font-size: 0.85rem !important;
+    }
+
+    .weekly-days-grid {
+        display: flex !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        gap: 8px !important;
+        padding-bottom: 8px !important;
+    }
+    .timeline-day-pill {
+        flex: 0 0 76px !important;
+    }
+}
+
+/* 3. Small Mobile Devices (max-width: 480px) */
+@media (max-width: 480px) {
+    .dashboard-main {
+        padding: 10px 8px;
+    }
+    .app-header {
+        padding: 0 10px;
+        height: 58px;
+    }
+    .user-greeting {
+        display: none;
+    }
+    .header-actions {
+        gap: 8px;
+    }
+    .btn-notifications {
+        width: 36px;
+        height: 36px;
+        font-size: 0.95rem;
+    }
+    .btn-icon-danger {
+        width: 36px;
+        height: 36px;
+    }
+    .section-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+    }
+    .section-header button {
+        width: 100%;
+    }
+    .workouts-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+    }
+    .workouts-header button {
+        width: 100%;
+    }
+    .profile-stats {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+    }
+    .stat-box {
+        padding: 8px 10px;
+    }
+    .stat-value {
+        font-size: 1rem;
+    }
+    .stat-label {
+        font-size: 0.72rem;
+    }
+    .modal-footer {
+        flex-direction: column-reverse;
+        gap: 8px;
+    }
+    .modal-footer button {
+        width: 100%;
+    }
+    .modal-video-content {
+        padding: 12px 8px;
+        margin: 6px;
+    }
+    .btn-video-watch-admin {
+        width: 100%;
+        justify-content: center;
+        padding: 8px 12px;
+    }
+    .exercise-video-actions-admin {
+        width: 100%;
+    }
+    .welcome-banner {
+        padding: 16px 14px;
+    }
+    .welcome-banner h1 {
+        font-size: 1.35rem;
+    }
+    .welcome-banner p {
+        font-size: 0.85rem;
+    }
+    .activity-panel-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .activity-period-selector select {
+        width: 100%;
+    }
+    .btn-catalog-video-play {
+        font-size: 0.76rem;
+        padding: 8px 6px;
     }
 }
 
@@ -1765,32 +2168,52 @@ select option {
     font-size: 0.9rem;
 }
 
-/* Responsive Catalog */
+/* Responsive Catalog & Admin Navigation */
 @media (max-width: 768px) {
     .admin-tabs-nav {
-        padding: 0 16px;
+        padding: 0 14px;
+        display: flex;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        gap: 6px;
     }
-    .admin-tab {
-        padding: 12px 16px;
-        font-size: 0.82rem;
-    }
-    .admin-tab span {
+    .admin-tabs-nav::-webkit-scrollbar {
         display: none;
     }
+    .admin-tab {
+        padding: 10px 14px;
+        font-size: 0.8rem;
+        white-space: nowrap;
+        flex-shrink: 0;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .admin-tab span {
+        display: inline-block;
+        font-size: 0.8rem;
+    }
     .admin-tab i {
-        font-size: 1.1rem;
+        font-size: 0.95rem;
     }
     .catalog-header {
         flex-direction: column;
         align-items: stretch;
+        gap: 14px;
     }
     .catalog-grid {
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr));
     }
     .muscle-group-filters {
         overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
         flex-wrap: nowrap;
         padding-bottom: 8px;
+    }
+    .muscle-group-filters::-webkit-scrollbar {
+        display: none;
     }
     .muscle-filter-pill {
         white-space: nowrap;
@@ -2417,7 +2840,7 @@ select option {
 /* Cards no Painel de Prazos (Admin) */
 .deadlines-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(min(290px, 100%), 1fr));
     gap: 16px;
 }
 .deadline-item-card {

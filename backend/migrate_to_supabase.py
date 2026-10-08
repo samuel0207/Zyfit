@@ -81,6 +81,7 @@ def main():
             password_hash=u.password_hash,
             password=u.password,
             role=u.role,
+            age=getattr(u, 'age', None),
             weight=u.weight,
             height=u.height,
             goals=u.goals,

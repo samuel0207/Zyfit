@@ -17,6 +17,7 @@ class UserBase(BaseModel):
     name: str
     phone: str
     role: str = "student"
+    age: Optional[int] = None
     weight: Optional[float] = None
     height: Optional[float] = None
     goals: Optional[str] = None
@@ -28,6 +29,7 @@ class UserCreate(UserBase):
 class UserUpdate(BaseModel):
     name: Optional[str] = None
     phone: Optional[str] = None
+    age: Optional[int] = None
     weight: Optional[float] = None
     height: Optional[float] = None
     goals: Optional[str] = None

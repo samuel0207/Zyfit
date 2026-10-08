@@ -58,6 +58,7 @@ def run_tests():
         "phone": "11988888888",
         "password": "alunopassword123",
         "role": "student",
+        "age": 28,
         "weight": 82.3,
         "height": 1.81,
         "goals": "Aumento de massa muscular"
@@ -66,7 +67,8 @@ def run_tests():
     assert response.status_code == 201, f"Erro ao criar aluno: {response.text}"
     student_data = response.json()
     student_id = student_data["id"]
-    print(f"👉 OK! Aluno criado com sucesso. ID: {student_id}")
+    assert student_data.get("age") == 28, f"Erro: Idade esperada 28, obteve {student_data.get('age')}"
+    print(f"👉 OK! Aluno criado com sucesso com idade={student_data.get('age')}. ID: {student_id}")
 
     # 5. Test Workout & Exercise creation for Student
     print("\n[TEST 5] Criando Ficha de Treino e Exercício para o aluno...")

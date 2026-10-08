@@ -21,6 +21,27 @@ let state = {
     expiringWorkouts: [] // Admin monitoring
 };
 
+// Security and string escaping utilities
+function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+function escapeJs(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/\\/g, '\\\\')
+        .replace(/'/g, "\\'")
+        .replace(/"/g, '\\"')
+        .replace(/\n/g, '\\n')
+        .replace(/\r/g, '\\r');
+}
+
 // ==========================================================================
 // INICIALIZAÇÃO DA APLICAÇÃO
 // ==========================================================================
@@ -257,8 +278,8 @@ function renderStudentsList(studentsList) {
                 <i class="fa-solid fa-user"></i>
             </div>
             <div class="student-card-info">
-                <h4>${student.name}</h4>
-                <p>${student.phone}</p>
+                <h4>${escapeHtml(student.name)}</h4>
+                <p>${escapeHtml(student.phone)}${student.age ? ` • <span class="student-age-pill">${student.age} anos</span>` : ''}</p>
             </div>
             <div class="student-card-arrow">
                 <i class="fa-solid fa-chevron-right"></i>
@@ -266,6 +287,14 @@ function renderStudentsList(studentsList) {
         </div>
     `).join('');
 }
+
+function backToStudentsList() {
+    const sidebar = document.querySelector('.students-section');
+    if (sidebar) {
+        sidebar.scrollIntoView({ behavior: 'smooth' });
+    }
+}
+window.backToStudentsList = backToStudentsList;
 
 async function selectStudent(studentId) {
     state.selectedStudentId = studentId;
@@ -290,6 +319,12 @@ async function selectStudent(studentId) {
     document.getElementById('view-student-name').innerText = student.name;
     document.getElementById('view-student-phone').innerHTML = `<i class="fa-solid fa-mobile-button" style="color: var(--primary-color);"></i> ${student.phone}`;
     document.getElementById('view-student-password').innerText = student.password || '------';
+    
+    const ageEl = document.getElementById('view-student-age');
+    if (ageEl) {
+        ageEl.innerText = student.age ? `${student.age} anos` : '--';
+    }
+    
     document.getElementById('view-student-weight').innerText = student.weight ? `${student.weight} kg` : '--';
     document.getElementById('view-student-height').innerText = student.height ? `${student.height} m` : '--';
     document.getElementById('view-student-goals').innerText = student.goals || 'Nenhum objetivo cadastrado.';
@@ -318,6 +353,13 @@ async function selectStudent(studentId) {
     const periodSelect = document.getElementById('activity-period-select');
     const selectedDays = periodSelect ? parseInt(periodSelect.value) : 30;
     fetchStudentActivity(studentId, selectedDays);
+
+    // Responsive: On small screens, scroll down to the student profile
+    if (window.innerWidth <= 1024) {
+        setTimeout(() => {
+            profileView.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 100);
+    }
 }
 
 // Helper to render Goal Date in student profile view
@@ -473,13 +515,15 @@ async function handleStudentSubmit(event) {
     const name = document.getElementById('student-name').value;
     const phone = document.getElementById('student-phone').value;
     const password = document.getElementById('student-password').value;
+    const ageInput = document.getElementById('student-age');
+    const age = ageInput && ageInput.value ? parseInt(ageInput.value) : null;
     const weight = parseFloat(document.getElementById('student-weight').value) || null;
     const height = parseFloat(document.getElementById('student-height').value) || null;
     const goals = document.getElementById('student-goals').value || null;
     const goalDateInput = document.getElementById('student-goal-date');
     const goal_date = goalDateInput ? (goalDateInput.value || null) : null;
     
-    const payload = { name, phone, weight, height, goals, goal_date };
+    const payload = { name, phone, age, weight, height, goals, goal_date };
     
     try {
         if (id) {
@@ -587,32 +631,43 @@ function renderWorkoutsList(workoutsList) {
     workoutsContainer.innerHTML = workoutsList.map(workout => {
         const exercisesHtml = workout.exercises && workout.exercises.length > 0
             ? workout.exercises.map((ex, index) => `
-                <div class="exercise-row">
-                    <div class="exercise-main-details">
-                        <span class="exercise-number">${index + 1}</span>
-                        <div class="exercise-meta-info">
-                            <h5>${ex.name}</h5>
-                            <div class="exercise-specs">
-                                <span class="spec-item"><i class="fa-solid fa-repeat"></i> ${ex.sets}x</span>
-                                <span class="spec-item"><i class="fa-solid fa-dumbbell"></i> ${ex.repetitions}</span>
-                                <span class="spec-item"><i class="fa-regular fa-clock"></i> Descanso: ${ex.rest_time}</span>
+                <div class="exercise-card-wrapper" id="exercise-card-${ex.id}">
+                    <div class="exercise-row">
+                        <div class="exercise-main-details">
+                            <span class="exercise-number">${index + 1}</span>
+                            <div class="exercise-meta-info">
+                                <h5>${escapeHtml(ex.name)}</h5>
+                                <div class="exercise-specs">
+                                    <span class="spec-item"><i class="fa-solid fa-repeat"></i> ${ex.sets}x</span>
+                                    <span class="spec-item"><i class="fa-solid fa-dumbbell"></i> ${ex.repetitions}</span>
+                                    <span class="spec-item"><i class="fa-regular fa-clock"></i> Descanso: ${ex.rest_time}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="exercise-right-actions">
+                            ${ex.video_url 
+                                ? `
+                                <div class="exercise-video-actions-admin">
+                                    <button type="button" class="btn-video-watch-admin" onclick="playDemonstrationVideo('${escapeJs(ex.name)}', '${escapeJs(ex.video_url)}')" title="Assistir vídeo de execução">
+                                        <i class="fa-solid fa-circle-play"></i> Ver Vídeo
+                                    </button>
+                                    <button type="button" class="btn-icon-sm btn-inline-video-toggle" onclick="toggleInlineExerciseVideo('${ex.id}', '${escapeJs(ex.name)}', '${escapeJs(ex.video_url)}')" title="Expandir vídeo integrado aqui">
+                                        <i class="fa-solid fa-film"></i>
+                                    </button>
+                                </div>`
+                                : ''
+                            }
+                            <div class="exercise-crud-buttons">
+                                <button class="btn-icon-sm" onclick="openEditExercise('${workout.id}', '${ex.id}')" title="Editar exercício">
+                                    <i class="fa-regular fa-pen-to-square"></i>
+                                </button>
+                                <button class="btn-icon-sm btn-danger" onclick="deleteExercise('${ex.id}')" title="Excluir exercício">
+                                    <i class="fa-regular fa-trash-can"></i>
+                                </button>
                             </div>
                         </div>
                     </div>
-                    <div class="exercise-right-actions">
-                        ${ex.video_url 
-                            ? `<span class="btn-video-badge" title="${ex.video_url}"><i class="fa-brands fa-youtube"></i> Execução</span>`
-                            : ''
-                        }
-                        <div class="exercise-crud-buttons">
-                            <button class="btn-icon-sm" onclick="openEditExercise('${workout.id}', '${ex.id}')" title="Editar exercício">
-                                <i class="fa-regular fa-pen-to-square"></i>
-                            </button>
-                            <button class="btn-icon-sm btn-danger" onclick="deleteExercise('${ex.id}')" title="Excluir exercício">
-                                <i class="fa-regular fa-trash-can"></i>
-                            </button>
-                        </div>
-                    </div>
+                    ${ex.video_url ? `<div id="inline-video-${ex.id}" class="exercise-inline-video hidden"></div>` : ''}
                 </div>
             `).join('')
             : `<p class="empty-state" style="padding: 15px;">Nenhum exercício cadastrado nesta ficha.</p>`;
@@ -847,6 +902,12 @@ function closeModal(modalId) {
                 frameContainer.innerHTML = '';
             }
         }
+
+        // Also clean up live video preview boxes
+        const wp = document.getElementById('exercise-video-preview-box');
+        if (wp) { wp.innerHTML = ''; wp.classList.add('hidden'); }
+        const cp = document.getElementById('catalog-exercise-video-preview-box');
+        if (cp) { cp.innerHTML = ''; cp.classList.add('hidden'); }
     }
 }
 
@@ -857,6 +918,8 @@ document.getElementById('btn-add-student-modal').addEventListener('click', () =>
     document.getElementById('student-form-id').value = '';
     document.getElementById('student-password-container').style.display = 'block';
     document.getElementById('student-password').required = true;
+    const ageInput = document.getElementById('student-age');
+    if (ageInput) ageInput.value = '';
     const goalDateInput = document.getElementById('student-goal-date');
     if (goalDateInput) goalDateInput.value = '';
     openModal('modal-student');
@@ -873,6 +936,8 @@ document.getElementById('btn-edit-student').addEventListener('click', () => {
     document.getElementById('student-password-container').style.display = 'block';
     document.getElementById('student-password').required = false; // password is optional when editing
     document.getElementById('student-password').placeholder = 'Deixe em branco para manter a senha atual';
+    const ageInput = document.getElementById('student-age');
+    if (ageInput) ageInput.value = student.age || '';
     document.getElementById('student-weight').value = student.weight || '';
     document.getElementById('student-height').value = student.height || '';
     document.getElementById('student-goals').value = student.goals || '';
@@ -1045,6 +1110,9 @@ function setupEventListeners() {
         document.getElementById('catalog-form-id').value = '';
         openModal('modal-catalog-exercise');
     });
+
+    // 9. Video live previews in exercise modals
+    setupVideoLivePreviews();
 }
 
 // ==========================================================================
@@ -1149,7 +1217,11 @@ function renderStudentPortal() {
                     <h1>Bora treinar, ${state.user.name.split(' ')[0]}! 💪</h1>
                     <p>Foco nos seus objetivos: <strong>${state.user.goals || 'Manter saúde e constância.'}</strong></p>
                 </div>
-                <div class="profile-stats" style="margin-bottom: 0; display: flex; gap: 10px;">
+                <div class="profile-stats" style="margin-bottom: 0; display: flex; gap: 10px; flex-wrap: wrap;">
+                    <div class="stat-box" style="padding: 8px 16px; background: rgba(255,255,255,0.02);">
+                        <span class="stat-label">Idade</span>
+                        <span class="stat-value" style="font-size: 1.05rem;">${state.user.age ? `${state.user.age} anos` : '--'}</span>
+                    </div>
                     <div class="stat-box" style="padding: 8px 16px; background: rgba(255,255,255,0.02);">
                         <span class="stat-label">Peso</span>
                         <span class="stat-value" style="font-size: 1.05rem;">${weight ? `${weight} kg` : '--'}</span>
@@ -1514,6 +1586,146 @@ function parseVimeoUrl(url) {
     return null;
 }
 
+// Expose modal player globally
+window.playDemonstrationVideo = playDemonstrationVideo;
+window.parseYouTubeUrl = parseYouTubeUrl;
+window.parseVimeoUrl = parseVimeoUrl;
+
+// Build embedded iframe or video player for inline viewing and previews
+function buildVideoEmbedHtml(videoUrl, title) {
+    if (!videoUrl) return '';
+    const isShorts = videoUrl.includes('/shorts/') || videoUrl.includes('youtube.com/shorts');
+    const ytUrl = parseYouTubeUrl(videoUrl);
+    const vimeoUrl = parseVimeoUrl(videoUrl);
+    const aspectClass = isShorts ? 'aspect-vertical' : 'aspect-widescreen';
+
+    if (ytUrl) {
+        return `
+            <div class="video-embed-box ${aspectClass}">
+                <iframe src="${ytUrl}" 
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                        allowfullscreen>
+                </iframe>
+            </div>
+        `;
+    } else if (vimeoUrl) {
+        return `
+            <div class="video-embed-box ${aspectClass}">
+                <iframe src="${vimeoUrl}" 
+                        allow="autoplay; fullscreen; picture-in-picture" 
+                        allowfullscreen>
+                </iframe>
+            </div>
+        `;
+    } else {
+        const isDirectVideo = videoUrl.endsWith('.mp4') || videoUrl.endsWith('.webm') || videoUrl.endsWith('.ogg');
+        if (isDirectVideo) {
+            return `
+                <div class="video-embed-box ${aspectClass}">
+                    <video controls autoplay style="width:100%; height:100%; border-radius: var(--radius-sm);">
+                        <source src="${videoUrl}" type="video/mp4">
+                    </video>
+                </div>
+            `;
+        } else {
+            return `
+                <div class="video-embed-fallback">
+                    <p><i class="fa-solid fa-video"></i> Link de vídeo demonstrativo:</p>
+                    <a href="${videoUrl}" target="_blank" class="btn-primary-sm" style="text-decoration:none;">
+                        Abrir em nova aba <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                    </a>
+                </div>
+            `;
+        }
+    }
+}
+window.buildVideoEmbedHtml = buildVideoEmbedHtml;
+
+function toggleInlineExerciseVideo(id, name, videoUrl) {
+    const el = document.getElementById(`inline-video-${id}`);
+    if (!el) return;
+    if (!el.classList.contains('hidden')) {
+        el.innerHTML = '';
+        el.classList.add('hidden');
+    } else {
+        el.innerHTML = `
+            <div class="inline-video-header">
+                <span><i class="fa-solid fa-play"></i> ${escapeHtml(name)}</span>
+                <button type="button" class="btn-close-inline" onclick="toggleInlineExerciseVideo('${id}')" title="Fechar prévia">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            ${buildVideoEmbedHtml(videoUrl, name)}
+        `;
+        el.classList.remove('hidden');
+    }
+}
+window.toggleInlineExerciseVideo = toggleInlineExerciseVideo;
+
+function toggleInlineCatalogVideo(id, name, videoUrl) {
+    const el = document.getElementById(`inline-catalog-video-${id}`);
+    if (!el) return;
+    if (!el.classList.contains('hidden')) {
+        el.innerHTML = '';
+        el.classList.add('hidden');
+    } else {
+        el.innerHTML = `
+            <div class="inline-video-header">
+                <span><i class="fa-solid fa-play"></i> ${escapeHtml(name)}</span>
+                <button type="button" class="btn-close-inline" onclick="toggleInlineCatalogVideo('${id}')" title="Fechar prévia">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            ${buildVideoEmbedHtml(videoUrl, name)}
+        `;
+        el.classList.remove('hidden');
+    }
+}
+window.toggleInlineCatalogVideo = toggleInlineCatalogVideo;
+
+function setupVideoLivePreviews() {
+    const attachLivePreview = (inputId, btnId, previewBoxId) => {
+        const input = document.getElementById(inputId);
+        const btn = document.getElementById(btnId);
+        const box = document.getElementById(previewBoxId);
+        if (!input || !box) return;
+
+        const renderPreview = () => {
+            const url = input.value.trim();
+            if (!url) {
+                box.innerHTML = '';
+                box.classList.add('hidden');
+                return;
+            }
+            box.innerHTML = `
+                <div class="preview-box-header">
+                    <span><i class="fa-solid fa-video"></i> Prévia Integrada do Vídeo</span>
+                    <button type="button" class="btn-close-inline" onclick="this.closest('.modal-video-preview-box').classList.add('hidden'); this.closest('.modal-video-preview-box').innerHTML='';" title="Fechar prévia">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+                ${buildVideoEmbedHtml(url, 'Demonstração')}
+            `;
+            box.classList.remove('hidden');
+        };
+
+        if (btn) {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                renderPreview();
+            });
+        }
+        input.addEventListener('change', renderPreview);
+        input.addEventListener('blur', () => {
+            if (input.value.trim()) renderPreview();
+        });
+    };
+
+    attachLivePreview('exercise-video', 'btn-preview-workout-video', 'exercise-video-preview-box');
+    attachLivePreview('catalog-exercise-video', 'btn-preview-catalog-video', 'catalog-exercise-video-preview-box');
+}
+window.setupVideoLivePreviews = setupVideoLivePreviews;
+
 
 // ==========================================================================
 // ADMIN TAB SWITCHING SYSTEM
@@ -1582,9 +1794,9 @@ function renderCatalogList(exercisesList) {
     }
     
     listContainer.innerHTML = exercisesList.map(ex => `
-        <div class="catalog-card">
+        <div class="catalog-card" id="catalog-card-${ex.id}">
             <div class="catalog-card-header">
-                <h4>${ex.name}</h4>
+                <h4>${escapeHtml(ex.name)}</h4>
                 <div class="catalog-card-actions">
                     <button class="btn-icon-sm" onclick="openEditCatalogExercise('${ex.id}')" title="Editar exercício">
                         <i class="fa-regular fa-pen-to-square"></i>
@@ -1595,15 +1807,25 @@ function renderCatalogList(exercisesList) {
                 </div>
             </div>
             ${ex.muscle_group 
-                ? `<div><span class="muscle-badge"><i class="fa-solid fa-crosshairs"></i> ${ex.muscle_group}</span></div>` 
+                ? `<div><span class="muscle-badge"><i class="fa-solid fa-crosshairs"></i> ${escapeHtml(ex.muscle_group)}</span></div>` 
                 : ''
             }
             ${ex.description 
-                ? `<p class="catalog-card-description">${ex.description}</p>` 
+                ? `<p class="catalog-card-description">${escapeHtml(ex.description)}</p>` 
                 : ''
             }
             ${ex.video_url 
-                ? `<div class="catalog-card-video"><i class="fa-brands fa-youtube"></i> ${ex.video_url}</div>` 
+                ? `
+                <div class="catalog-card-video-integrated">
+                    <button type="button" class="btn-catalog-video-play" onclick="playDemonstrationVideo('${escapeJs(ex.name)}', '${escapeJs(ex.video_url)}')" title="Assistir vídeo demonstrativo">
+                        <i class="fa-solid fa-circle-play"></i> Vídeo Demonstrativo
+                    </button>
+                    <button type="button" class="btn-icon-sm btn-catalog-inline-toggle" onclick="toggleInlineCatalogVideo('${ex.id}', '${escapeJs(ex.name)}', '${escapeJs(ex.video_url)}')" title="Ver vídeo integrado neste card">
+                        <i class="fa-solid fa-film"></i>
+                    </button>
+                </div>
+                <div id="inline-catalog-video-${ex.id}" class="exercise-inline-video hidden"></div>
+                ` 
                 : ''
             }
         </div>
